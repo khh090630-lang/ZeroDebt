@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZeroDebt - 학습 부채 관리자</title>
+    <title>ZeroDebt - 스마트 학습 스케줄러</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -13,28 +13,65 @@
         <header>
             <div class="header-content">
                 <h1><i class="fa-solid fa-leaf"></i> ZeroDebt</h1>
-                <p>학습 부채(Learning Debt)를 관리하고 오늘을 달성하세요.</p>
+                <p>장기 목표를 설정하면 매일의 학습량을 자동으로 분배합니다.</p>
             </div>
             <div class="header-actions">
-                <div class="time-setting">
-                    <label for="availableTime">오늘 가용 시간(분)</label>
-                    <input type="number" id="availableTime" value="300" min="0">
-                </div>
-                <button id="addUnexpectedBtn" class="btn btn-warning"><i class="fa-solid fa-bolt"></i> 돌발 변수 추가</button>
-                <button id="testDeadlineBtn" class="btn btn-danger"><i class="fa-solid fa-clock"></i> 마감 경고 테스트</button>
+                <button id="addUnexpectedBtn" class="btn btn-warning"><i class="fa-solid fa-bolt"></i> 돌발 변수 발생 (미루기/재분배)</button>
             </div>
         </header>
 
         <main>
             <div class="grid-layout">
-                <!-- Left Column -->
+                <!-- Left Column (Settings & Goal Entry) -->
                 <div class="left-col">
+                    <section class="glass-panel settings-section">
+                        <h2><i class="fa-solid fa-sliders"></i> 스케줄링 환경 설정</h2>
+                        <div class="settings-group">
+                            <label>넉넉한 요일 (여유 시간)</label>
+                            <div class="day-checkboxes">
+                                <label><input type="checkbox" value="1" class="avail-day"> 월</label>
+                                <label><input type="checkbox" value="2" class="avail-day"> 화</label>
+                                <label><input type="checkbox" value="3" class="avail-day"> 수</label>
+                                <label><input type="checkbox" value="4" class="avail-day"> 목</label>
+                                <label><input type="checkbox" value="5" class="avail-day"> 금</label>
+                                <label><input type="checkbox" value="6" class="avail-day"> 토</label>
+                                <label><input type="checkbox" value="0" class="avail-day"> 일</label>
+                            </div>
+                            <div class="form-group mt-10">
+                                <label for="availMultiplier">넉넉한 날의 학습량 배율 (일반 요일 대비)</label>
+                                <input type="number" id="availMultiplier" value="2.0" step="0.5" min="1.0">
+                            </div>
+                        </div>
+
+                        <div class="settings-group">
+                            <label>넉넉한 기간 추가 (방학 등)</label>
+                            <div class="date-range-inputs">
+                                <input type="date" id="availStartDate">
+                                <span>~</span>
+                                <input type="date" id="availEndDate">
+                                <button id="addAvailPeriodBtn" class="btn btn-primary btn-sm">추가</button>
+                            </div>
+                            <ul id="availPeriodList" class="period-list"></ul>
+                        </div>
+
+                        <div class="settings-group">
+                            <label>학습 불가 기간 추가 (여행, 시험 등)</label>
+                            <div class="date-range-inputs">
+                                <input type="date" id="blackoutStartDate">
+                                <span>~</span>
+                                <input type="date" id="blackoutEndDate">
+                                <button id="addBlackoutPeriodBtn" class="btn btn-danger btn-sm">추가</button>
+                            </div>
+                            <ul id="blackoutPeriodList" class="period-list"></ul>
+                        </div>
+                    </section>
+
                     <section class="glass-panel add-task-section">
-                        <h2><i class="fa-solid fa-plus-circle"></i> 새로운 임무 추가</h2>
-                        <form id="addTaskForm">
+                        <h2><i class="fa-solid fa-bullseye"></i> 새 장기 목표 등록</h2>
+                        <form id="addGoalForm">
                             <div class="form-group">
-                                <label for="taskSubject">과목</label>
-                                <select id="taskSubject" required>
+                                <label for="goalSubject">과목</label>
+                                <select id="goalSubject" required>
                                     <option value="math">수학</option>
                                     <option value="science">과학</option>
                                     <option value="english">영어</option>
@@ -42,30 +79,57 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="taskName">할 일</label>
-                                <input type="text" id="taskName" placeholder="예: 미적분 3단원 풀이" required>
+                                <label for="goalName">목표명</label>
+                                <input type="text" id="goalName" placeholder="예: 미적분 1 인강 수강" required>
+                            </div>
+                            <div class="flex-row">
+                                <div class="form-group half">
+                                    <label for="goalTotalUnits">총 분량 (강/페이지)</label>
+                                    <input type="number" id="goalTotalUnits" placeholder="예: 57" required min="1">
+                                </div>
+                                <div class="form-group half">
+                                    <label for="goalUnitTime">1단위당 시간(분)</label>
+                                    <input type="number" id="goalUnitTime" placeholder="예: 50" required min="1">
+                                </div>
                             </div>
                             <div class="form-group">
-                                <label for="taskDuration">소요 시간(분)</label>
-                                <input type="number" id="taskDuration" placeholder="예: 60" required min="1">
+                                <label for="goalDeadline">마감일</label>
+                                <input type="date" id="goalDeadline" required>
                             </div>
                             <div class="form-group">
-                                <label for="taskPriority">우선순위</label>
-                                <select id="taskPriority" required>
-                                    <option value="1">1순위 (필수)</option>
-                                    <option value="2">2순위 (권장)</option>
-                                    <option value="3">3순위 (선택)</option>
+                                <label for="goalPriority">우선순위 (1순위가 앞날짜에 집중 배치됨)</label>
+                                <select id="goalPriority" required>
+                                    <option value="1">1순위 (필수/최우선)</option>
+                                    <option value="2">2순위 (보통)</option>
+                                    <option value="3">3순위 (선택/후순위)</option>
                                 </select>
                             </div>
-                            <button type="submit" class="btn btn-primary">임무 추가</button>
+                            <button type="submit" class="btn btn-primary w-100">목표 등록 및 자동 스케줄링</button>
                         </form>
+                    </section>
+                </div>
+
+                <!-- Right Column (Dashboard & Generated Tasks) -->
+                <div class="right-col">
+                    <section class="glass-panel summary-section">
+                         <h2><i class="fa-solid fa-chart-pie"></i> 오늘의 학습 요약</h2>
+                         <div class="summary-box">
+                             <div class="summary-item">
+                                 <span class="summary-label">오늘 예상 소요 시간</span>
+                                 <span class="summary-value" id="todayEstimatedTime">0분</span>
+                             </div>
+                             <div class="summary-item">
+                                 <span class="summary-label">오늘 할당된 분량</span>
+                                 <span class="summary-value" id="todayTaskCount">0 단위</span>
+                             </div>
+                         </div>
                     </section>
 
                     <section class="glass-panel tasks-section">
-                        <h2><i class="fa-solid fa-list-check"></i> 오늘의 체크리스트</h2>
+                        <h2><i class="fa-solid fa-list-check"></i> 오늘의 자동 생성 체크리스트</h2>
                         <div class="progress-container">
                             <div class="progress-labels">
-                                <span>진척도</span>
+                                <span>오늘의 진척도 (분량 기준)</span>
                                 <span id="progressText">0%</span>
                             </div>
                             <div class="progress-bar-bg">
@@ -76,52 +140,7 @@
                             <!-- Tasks will be injected here -->
                         </ul>
                     </section>
-                </div>
 
-                <!-- Right Column -->
-                <div class="right-col">
-                    <section class="glass-panel debt-section">
-                        <h2><i class="fa-solid fa-triangle-exclamation"></i> 내일의 부채</h2>
-                        <p class="debt-info">오늘 미뤄진 우선순위 3번 임무들입니다.</p>
-                        <ul id="debtList" class="task-list debt-list">
-                            <!-- Debt tasks will be injected here -->
-                        </ul>
-                    </section>
-
-                    <section class="glass-panel calendar-section">
-                        <h2><i class="fa-solid fa-calendar-days"></i> 주간 학습 캘린더</h2>
-                        <div class="calendar-grid">
-                            <div class="day-col">
-                                <div class="day-label">월</div>
-                                <div class="day-block" id="cal-mon"></div>
-                            </div>
-                            <div class="day-col">
-                                <div class="day-label">화</div>
-                                <div class="day-block" id="cal-tue"></div>
-                            </div>
-                            <div class="day-col">
-                                <div class="day-label">수</div>
-                                <div class="day-block" id="cal-wed"></div>
-                            </div>
-                            <div class="day-col">
-                                <div class="day-label">목</div>
-                                <div class="day-block" id="cal-thu"></div>
-                            </div>
-                            <div class="day-col">
-                                <div class="day-label">금</div>
-                                <div class="day-block" id="cal-fri"></div>
-                            </div>
-                            <div class="day-col">
-                                <div class="day-label">토</div>
-                                <div class="day-block" id="cal-sat"></div>
-                            </div>
-                            <div class="day-col">
-                                <div class="day-label">일</div>
-                                <div class="day-block" id="cal-sun"></div>
-                            </div>
-                        </div>
-                    </section>
-                    
                     <section class="glass-panel garden-section">
                         <h2><i class="fa-solid fa-seedling"></i> 성취의 정원</h2>
                         <div class="streak-badge">
@@ -134,24 +153,32 @@
                     </section>
                 </div>
             </div>
+            
+            <section class="glass-panel all-goals-section mt-24">
+                <h2><i class="fa-solid fa-list"></i> 진행 중인 전체 목표 현황</h2>
+                <div class="table-container">
+                    <table id="goalsTable" class="goals-table">
+                        <thead>
+                            <tr>
+                                <th>과목</th>
+                                <th>목표명</th>
+                                <th>전체 진척도</th>
+                                <th>마감일</th>
+                                <th>우선순위</th>
+                                <th>삭제</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Goals will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </main>
     </div>
 
     <!-- Modals -->
     <div id="toastContainer" class="toast-container"></div>
-
-    <div id="unexpectedModal" class="modal">
-        <div class="modal-content glass-panel">
-            <h3>돌발 변수 추가</h3>
-            <p>갑자기 생긴 일정(수행평가 등)의 소요 시간을 입력하세요.</p>
-            <input type="number" id="unexpectedDuration" placeholder="예: 60" min="1">
-            <div class="modal-actions">
-                <button id="cancelUnexpected" class="btn">취소</button>
-                <button id="confirmUnexpected" class="btn btn-warning">추가하기</button>
-            </div>
-        </div>
-    </div>
-    
     <div id="confetti" class="confetti-container"></div>
 
     <script src="app.js"></script>
