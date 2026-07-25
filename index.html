@@ -6,7 +6,7 @@
     <title>ZeroDebt - 스마트 학습 스케줄러</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
     <div class="app-container">
@@ -16,6 +16,7 @@
                 <p>장기 목표를 설정하면 매일의 학습량을 자동으로 분배합니다.</p>
             </div>
             <div class="header-actions">
+                <button id="syncBtn" class="btn btn-primary"><i class="fa-solid fa-cloud"></i> 구글 시트 동기화</button>
                 <button id="addUnexpectedBtn" class="btn btn-warning"><i class="fa-solid fa-bolt"></i> 돌발 변수 발생 (미루기/재분배)</button>
             </div>
         </header>
@@ -181,6 +182,6 @@
     <div id="toastContainer" class="toast-container"></div>
     <div id="confetti" class="confetti-container"></div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
