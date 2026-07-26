@@ -548,10 +548,28 @@ header {
 }
 
 /* Calendar */
+.calendar-nav {
+    display: flex;
+    align-items: center;
+}
+.calendar-dow {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+    text-align: center;
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 0.9rem;
+}
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 8px;
+}
+.calendar-cell.empty {
+    background: transparent;
+    box-shadow: none;
 }
 .calendar-day-header {
     text-align: center;
@@ -594,4 +612,23 @@ header {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* Modals */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+.modal-content {
+    background: white;
+    width: 90%;
+    max-width: 500px;
+    padding: 24px;
+    max-height: 90vh;
+    overflow-y: auto;
 }
