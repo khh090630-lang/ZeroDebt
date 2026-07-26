@@ -12,6 +12,7 @@ let state = {
     },
     goals: [], // { id, subject, name, totalUnits, unitTime, deadline, priority, completedUnits }
     tasks: [], // Generated tasks for today { id, goalId, subject, name, units, duration, priority, completed }
+    history: {},
     lastGeneratedDate: null,
     streak: 0,
     lastCompletedDate: null
@@ -87,6 +88,30 @@ function saveData() {
 }
 
 function setupEventListeners() {
+    const prevBtn = document.getElementById('prevMonthBtn');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            currentCalMonth--;
+            if (currentCalMonth < 0) {
+                currentCalMonth = 11;
+                currentCalYear--;
+            }
+            renderCalendar();
+        });
+    }
+    
+    const nextBtn = document.getElementById('nextMonthBtn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            currentCalMonth++;
+            if (currentCalMonth > 11) {
+                currentCalMonth = 0;
+                currentCalYear++;
+            }
+            renderCalendar();
+        });
+    }
+
     // Settings
     availCheckboxes.forEach(cb => {
         cb.addEventListener('change', updateSettings);
@@ -432,8 +457,17 @@ window.toggleSubtask = function(taskId, idx) {
     const goal = state.goals.find(g => g.id === task.goalId);
     task.subtasks[idx] = !task.subtasks[idx];
     
+    const todayStr = getTodayStr();
+    if (!state.history) state.history = {};
+    if (!state.history[todayStr]) state.history[todayStr] = {};
+    
     if (goal) {
         goal.completedUnits += task.subtasks[idx] ? 1 : -1;
+        if (!state.history[todayStr][goal.subject]) state.history[todayStr][goal.subject] = 0;
+        state.history[todayStr][goal.subject] += task.subtasks[idx] ? 1 : -1;
+        if (state.history[todayStr][goal.subject] <= 0) {
+            delete state.history[todayStr][goal.subject];
+        }
     }
     
     saveData();
@@ -467,6 +501,7 @@ function renderAll() {
     renderTasks();
     renderSummary();
     renderGarden();
+    simulateSchedule();
     renderCalendar();
 }
 
@@ -717,60 +752,72 @@ function simulateSchedule() {
         simDate.setUTCDate(simDate.getUTCDate() + 1);
     }
     
-    return { schedule, maxDate };
+    fullSchedule = schedule;
 }
 
 function renderCalendar() {
     const calendarGrid = document.getElementById('calendarGrid');
-    if (!calendarGrid) return;
+    const monthLabel = document.getElementById('calendarMonthLabel');
+    if (!calendarGrid || !monthLabel) return;
+    
     calendarGrid.innerHTML = '';
+    monthLabel.innerText = `${currentCalYear}년 ${currentCalMonth + 1}월`;
     
     const todayStr = getTodayStr();
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
     
-    days.forEach(d => {
-        const div = document.createElement('div');
-        div.className = 'calendar-day-header';
-        div.innerText = d;
-        calendarGrid.appendChild(div);
-    });
+    const firstDay = new Date(currentCalYear, currentCalMonth, 1);
+    const lastDay = new Date(currentCalYear, currentCalMonth + 1, 0);
     
-    const { schedule } = simulateSchedule();
+    const startOffset = firstDay.getDay(); // 0 is Sunday
+    const totalDays = lastDay.getDate();
     
-    let currentD = new Date(todayStr);
-    currentD.setUTCDate(currentD.getUTCDate() - currentD.getDay()); // Start from Sunday
+    for (let i = 0; i < startOffset; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell empty';
+        calendarGrid.appendChild(cell);
+    }
     
-    for (let i = 0; i < 28; i++) {
-        const dStr = currentD.toISOString().split('T')[0];
+    for (let day = 1; day <= totalDays; day++) {
+        const monthStr = String(currentCalMonth + 1).padStart(2, '0');
+        const dayStr = String(day).padStart(2, '0');
+        const dStr = `${currentCalYear}-${monthStr}-${dayStr}`;
+        
         const cell = document.createElement('div');
         cell.className = 'calendar-cell';
         if (dStr < todayStr) cell.classList.add('past');
         if (getWeightOfDay(dStr) === 0) cell.classList.add('blackout');
+        if (dStr === todayStr) cell.style.border = '2px solid var(--primary-color)';
         
         const dateSpan = document.createElement('div');
         dateSpan.className = 'calendar-date';
-        dateSpan.innerHTML = `<span>${currentD.getUTCDate()}일</span>`;
+        dateSpan.innerHTML = `<span>${day}일</span>`;
         if (dStr === todayStr) dateSpan.innerHTML += `<span style="color:var(--success-color)">오늘</span>`;
         cell.appendChild(dateSpan);
         
-        if (schedule[dStr] && schedule[dStr].length > 0) {
-            schedule[dStr].forEach(t => {
+        let tasksForDay = [];
+        if (dStr < todayStr) {
+            if (state.history && state.history[dStr]) {
+                for (let subject in state.history[dStr]) {
+                    tasksForDay.push({ subject, units: state.history[dStr][subject] });
+                }
+            }
+        } else {
+            if (fullSchedule && fullSchedule[dStr]) {
+                tasksForDay = fullSchedule[dStr];
+            }
+        }
+        
+        if (tasksForDay.length > 0) {
+            tasksForDay.forEach(t => {
                 const taskDiv = document.createElement('div');
                 taskDiv.className = 'calendar-task';
-                taskDiv.style.backgroundColor = SUBJECT_COLORS[t.subject];
-                taskDiv.innerText = `${SUBJECT_NAMES[t.subject]} ${t.units}`;
+                taskDiv.style.backgroundColor = SUBJECT_COLORS[t.subject] || '#999';
+                taskDiv.innerText = `${SUBJECT_NAMES[t.subject] || t.subject} ${t.units}`;
                 cell.appendChild(taskDiv);
             });
-        } else if (dStr >= todayStr && getWeightOfDay(dStr) > 0) {
-            const noTask = document.createElement('div');
-            noTask.className = 'calendar-task';
-            noTask.style.backgroundColor = '#ccc';
-            noTask.innerText = '휴무';
-            cell.appendChild(noTask);
         }
         
         calendarGrid.appendChild(cell);
-        currentD.setUTCDate(currentD.getUTCDate() + 1);
     }
 }
 
