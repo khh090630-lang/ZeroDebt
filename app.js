@@ -18,6 +18,10 @@ let state = {
     lastCompletedDate: null
 };
 
+let fullSchedule = {};
+let currentCalYear = new Date().getFullYear();
+let currentCalMonth = new Date().getMonth();
+
 // DOM Elements
 const availCheckboxes = document.querySelectorAll('.avail-day');
 const availMultiplierInput = document.getElementById('availMultiplier');
