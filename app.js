@@ -663,104 +663,119 @@ function simulateSchedule(ignoreTodayState = false) {
         simDate.setUTCDate(simDate.getUTCDate() + 1);
     }
     
+    // PRE-CALCULATE INDEPENDENT SCHEDULES (CAPACITY POOL)
+    const independentSchedules = {}; 
+    
+    simGoals.forEach(goal => {
+        independentSchedules[goal.id] = {};
+        let remainingUnits = goal.totalUnits - goal.simCompleted; 
+        if (remainingUnits <= 0) return;
+        
+        let currentDate = new Date(simDate.toISOString().split('T')[0]);
+        let deadlineDate = new Date(goal.deadline);
+        
+        if (currentDate > deadlineDate) {
+            independentSchedules[goal.id][currentDate.toISOString().split('T')[0]] = remainingUnits;
+            return;
+        }
+        
+        let totalWeightGoal = 0;
+        for (let d = new Date(currentDate); d <= deadlineDate; d.setUTCDate(d.getUTCDate() + 1)) {
+            totalWeightGoal += getWeightOfDay(d.toISOString().split('T')[0]);
+        }
+        
+        if (totalWeightGoal === 0) {
+            independentSchedules[goal.id][currentDate.toISOString().split('T')[0]] = remainingUnits;
+            return;
+        }
+        
+        let accWeight = 0;
+        let prevAssigned = 0;
+        
+        for (let d = new Date(currentDate); d <= deadlineDate; d.setUTCDate(d.getUTCDate() + 1)) {
+            const dStr = d.toISOString().split('T')[0];
+            const w = getWeightOfDay(dStr);
+            if (w > 0) {
+                accWeight += w;
+                let target = Math.round(remainingUnits * accWeight / totalWeightGoal);
+                let assign = target - prevAssigned;
+                if (assign > 0) {
+                    independentSchedules[goal.id][dStr] = assign;
+                }
+                prevAssigned = target;
+            }
+        }
+    });
+
     while (simDate <= maxDate) {
         const dStr = simDate.toISOString().split('T')[0];
         let todayWeight = getWeightOfDay(dStr);
         let dailyTasks = [];
         
         if (todayWeight > 0) {
-            let totalBase = 0;
-            let totalLeftoverFraction = 0;
-            let exact_total_quota = 0;
-            let activeGoals = [];
-            
+            let total_capacity = 0;
             simGoals.forEach(goal => {
-                if (goal.simCompleted >= goal.totalUnits) return;
-                
-                let currentDate = new Date(dStr);
-                let deadlineDate = new Date(goal.deadline);
-                if (currentDate > deadlineDate) return;
-                
-                let totalWeightGoal = 0;
-                let remainingDays = 0;
-                for (let d = new Date(currentDate); d <= deadlineDate; d.setUTCDate(d.getUTCDate() + 1)) {
-                    const w = getWeightOfDay(d.toISOString().split('T')[0]);
-                    totalWeightGoal += w;
-                    if (w > 0) remainingDays++;
+                if (independentSchedules[goal.id] && independentSchedules[goal.id][dStr]) {
+                    total_capacity += independentSchedules[goal.id][dStr];
                 }
-                if (totalWeightGoal === 0) totalWeightGoal = todayWeight;
-                
-                const remainingUnits = goal.totalUnits - goal.simCompleted;
-                
-                if (remainingUnits >= remainingDays && remainingDays > 0 && todayWeight > 0) {
-                    totalBase += 1;
-                    let leftoverUnits = remainingUnits - remainingDays;
-                    let leftoverWeight = totalWeightGoal - remainingDays;
-                    if (leftoverWeight > 0 && leftoverUnits > 0) {
-                        totalLeftoverFraction += (leftoverUnits / leftoverWeight) * (todayWeight - 1);
-                    }
-                } else if (todayWeight > 0) {
-                    exact_total_quota += (remainingUnits / totalWeightGoal) * todayWeight;
-                }
-                
-                activeGoals.push(goal);
             });
             
-            let rounded_exact = exact_total_quota > 0 && exact_total_quota < 1 ? 1 : Math.round(exact_total_quota);
-            let total_quota = totalBase + Math.round(totalLeftoverFraction) + rounded_exact;
+            let activeGoals = simGoals.filter(g => g.simCompleted < g.totalUnits);
             
-            let groupedByPriority = {};
-            for (let goal of activeGoals) {
-                if (!groupedByPriority[goal.priority]) groupedByPriority[goal.priority] = [];
-                groupedByPriority[goal.priority].push(goal);
-            }
-            
-            let sortedPriorities = Object.keys(groupedByPriority).map(Number).sort((a, b) => a - b);
-            let remaining_total_quota = total_quota;
-            let assignments = {};
-            
-            for (let p of sortedPriorities) {
-                if (remaining_total_quota <= 0) break;
+            if (total_capacity > 0 && activeGoals.length > 0) {
+                let groupedByPriority = {};
+                for (let goal of activeGoals) {
+                    if (!groupedByPriority[goal.priority]) groupedByPriority[goal.priority] = [];
+                    groupedByPriority[goal.priority].push(goal);
+                }
                 
-                let activeInGroup = [...groupedByPriority[p]];
-                activeInGroup.sort((a, b) => {
-                    let diff = (b.totalUnits - b.simCompleted) - (a.totalUnits - a.simCompleted);
-                    if (diff !== 0) return diff;
-                    return a.deadline.localeCompare(b.deadline);
-                });
+                let sortedPriorities = Object.keys(groupedByPriority).map(Number).sort((a, b) => a - b);
+                let remaining_capacity = total_capacity;
+                let assignments = {};
                 
-                while (remaining_total_quota > 0 && activeInGroup.length > 0) {
-                    for (let i = 0; i < activeInGroup.length; i++) {
-                        if (remaining_total_quota <= 0) break;
-                        
-                        let goal = activeInGroup[i];
-                        if (!assignments[goal.id]) assignments[goal.id] = 0;
-                        
-                        assignments[goal.id]++;
-                        goal.simCompleted++;
-                        remaining_total_quota--;
-                        
-                        if (goal.totalUnits - goal.simCompleted <= 0) {
-                            activeInGroup.splice(i, 1);
-                            i--;
+                for (let p of sortedPriorities) {
+                    if (remaining_capacity <= 0) break;
+                    
+                    let activeInGroup = [...groupedByPriority[p]];
+                    activeInGroup.sort((a, b) => {
+                        let diff = (b.totalUnits - b.simCompleted) - (a.totalUnits - a.simCompleted);
+                        if (diff !== 0) return diff;
+                        return a.deadline.localeCompare(b.deadline);
+                    });
+                    
+                    while (remaining_capacity > 0 && activeInGroup.length > 0) {
+                        for (let i = 0; i < activeInGroup.length; i++) {
+                            if (remaining_capacity <= 0) break;
+                            
+                            let goal = activeInGroup[i];
+                            if (!assignments[goal.id]) assignments[goal.id] = 0;
+                            
+                            assignments[goal.id]++;
+                            goal.simCompleted++;
+                            remaining_capacity--;
+                            
+                            if (goal.totalUnits - goal.simCompleted <= 0) {
+                                activeInGroup.splice(i, 1);
+                                i--;
+                            }
                         }
                     }
                 }
-            }
-            
-            activeGoals.sort((a, b) => {
-                if (a.priority !== b.priority) return a.priority - b.priority;
-                return a.deadline.localeCompare(b.deadline);
-            });
-            
-            for (let goal of activeGoals) {
-                if (assignments[goal.id] > 0) {
-                    dailyTasks.push({ 
-                        subject: goal.subject, 
-                        units: assignments[goal.id],
-                        unitString: goal.unitString || '단위',
-                        goalId: goal.id
-                    });
+                
+                activeGoals.sort((a, b) => {
+                    if (a.priority !== b.priority) return a.priority - b.priority;
+                    return a.deadline.localeCompare(b.deadline);
+                });
+                
+                for (let goal of activeGoals) {
+                    if (assignments[goal.id] > 0) {
+                        dailyTasks.push({ 
+                            subject: goal.subject, 
+                            units: assignments[goal.id],
+                            unitString: goal.unitString || '단위',
+                            goalId: goal.id
+                        });
+                    }
                 }
             }
         }
