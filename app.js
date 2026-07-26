@@ -204,7 +204,6 @@ function addGoal() {
         subject: document.getElementById('goalSubject').value,
         name: document.getElementById('goalName').value,
         totalUnits: parseInt(document.getElementById('goalTotalUnits').value),
-        unitTime: parseInt(document.getElementById('goalUnitTime').value),
         deadline: document.getElementById('goalDeadline').value,
         priority: parseInt(document.getElementById('goalPriority').value),
         completedUnits: 0
@@ -253,27 +252,42 @@ function checkAndGenerateTasks() {
 }
 
 function forceRegenerateTasks() {
-    // Regenerates today's quotas, keeping completed tasks intact
     distributeGoalsForToday(true);
     renderAll();
 }
 
-function distributeGoalsForToday(keepCompleted = false) {
+function distributeGoalsForToday(isForce = false) {
     const todayStr = getTodayStr();
-    let newTasks = keepCompleted ? state.tasks.filter(t => t.completed) : [];
+    
+    // Always start with current tasks for today if they exist
+    let newTasks = (state.lastGeneratedDate === todayStr || isForce) ? [...state.tasks] : [];
     
     state.goals.forEach(goal => {
-        if (goal.completedUnits >= goal.totalUnits) return;
+        let existingTaskIndex = newTasks.findIndex(t => t.goalId === goal.id);
+        let existingTask = existingTaskIndex >= 0 ? newTasks[existingTaskIndex] : null;
+
+        // Migration check for older task format
+        if (existingTask && existingTask.completed !== undefined) {
+             existingTask.subtasks = new Array(existingTask.units).fill(existingTask.completed);
+             delete existingTask.completed;
+             delete existingTask.duration;
+        }
+        if (existingTask && !existingTask.subtasks) {
+             existingTask.subtasks = new Array(existingTask.units).fill(false);
+        }
+
+        if (goal.completedUnits >= goal.totalUnits) {
+            // Remove if goal is completed
+            if (existingTask) newTasks.splice(existingTaskIndex, 1);
+            return;
+        }
         
         let totalWeight = 0;
         let todayWeight = getWeightOfDay(todayStr);
         
-        if (todayWeight === 0) return; // Blackout day today, no tasks assigned.
-        
         let currentDate = new Date(todayStr);
         let deadlineDate = new Date(goal.deadline);
         
-        // Priority 1: Artificial earlier deadline to create buffer
         if (goal.priority === 1) {
             let diffDays = (deadlineDate - currentDate) / (1000 * 60 * 60 * 24);
             if (diffDays > 4) {
@@ -286,31 +300,48 @@ function distributeGoalsForToday(keepCompleted = false) {
             totalWeight += getWeightOfDay(dStr);
         }
         
-        if (totalWeight === 0) totalWeight = todayWeight; // Overdue fallback
+        if (totalWeight === 0) totalWeight = todayWeight; 
         
-        // Calculate units assigned to today based on weight proportion
         const remainingUnits = goal.totalUnits - goal.completedUnits;
-        let dailyQuota = Math.ceil((remainingUnits / totalWeight) * todayWeight);
+        
+        // Wait, if existing task has completed units today, those are ALREADY counted in goal.completedUnits
+        // So remainingUnits is accurate for FUTURE days, but dailyQuota for today shouldn't shrink just because they checked it off.
+        // It's actually a bit simpler: just calculate the quota.
+        let dailyQuota = todayWeight === 0 ? 0 : Math.ceil((remainingUnits / totalWeight) * todayWeight);
         
         if (dailyQuota > remainingUnits) dailyQuota = remainingUnits;
         
-        // If keepCompleted, subtract what we already did today for this goal
-        if (keepCompleted) {
-            const alreadyDoneToday = newTasks.filter(t => t.goalId === goal.id).reduce((sum, t) => sum + t.units, 0);
-            dailyQuota -= alreadyDoneToday;
-        }
-        
         if (dailyQuota > 0) {
-            newTasks.push({
-                id: 't_' + goal.id + '_' + Date.now() + Math.random(),
-                goalId: goal.id,
-                subject: goal.subject,
-                name: `${goal.name} (${dailyQuota}단위)`,
-                units: dailyQuota,
-                duration: dailyQuota * goal.unitTime,
-                priority: goal.priority,
-                completed: false
-            });
+            if (existingTask) {
+                const checkedCount = existingTask.subtasks.filter(Boolean).length;
+                const newLength = Math.max(dailyQuota, checkedCount); // never shrink below what's already checked
+                existingTask.name = `${goal.name} (${newLength}단위)`;
+                existingTask.units = newLength;
+                while (existingTask.subtasks.length < newLength) existingTask.subtasks.push(false);
+                existingTask.subtasks = existingTask.subtasks.slice(0, newLength);
+            } else {
+                newTasks.push({
+                    id: 't_' + goal.id + '_' + Date.now() + Math.random(),
+                    goalId: goal.id,
+                    subject: goal.subject,
+                    name: `${goal.name} (${dailyQuota}단위)`,
+                    units: dailyQuota,
+                    priority: goal.priority,
+                    subtasks: new Array(dailyQuota).fill(false),
+                    expanded: false
+                });
+            }
+        } else {
+            if (existingTask) {
+                const checkedCount = existingTask.subtasks.filter(Boolean).length;
+                if (checkedCount > 0) {
+                     existingTask.subtasks = existingTask.subtasks.slice(0, checkedCount);
+                     existingTask.units = checkedCount;
+                     existingTask.name = `${goal.name} (${checkedCount}단위)`;
+                } else {
+                     newTasks.splice(existingTaskIndex, 1);
+                }
+            }
         }
     });
     
@@ -321,41 +352,56 @@ function distributeGoalsForToday(keepCompleted = false) {
 }
 
 function postponeRemainingTasks() {
-    const incompleteTasks = state.tasks.filter(t => !t.completed);
-    if (incompleteTasks.length === 0) {
+    const hasIncomplete = state.tasks.some(t => t.subtasks && t.subtasks.includes(false));
+    if (!hasIncomplete) {
         showToast('미룰 임무가 없습니다.', 'warning');
         return;
     }
     
-    // Remove uncompleted tasks from today
-    state.tasks = state.tasks.filter(t => t.completed);
+    state.tasks = state.tasks.filter(t => {
+        if(!t.subtasks) return false;
+        const checkedCount = t.subtasks.filter(Boolean).length;
+        if (checkedCount === 0) return false;
+        
+        t.subtasks = new Array(checkedCount).fill(true);
+        t.units = checkedCount;
+        t.name = t.name.replace(/\(\d+단위\)/, `(${checkedCount}단위)`);
+        return true;
+    });
+    
     saveData();
     renderAll();
     showToast('미완료 분량이 남은 일정에 1/n로 재분배되었습니다.', 'success');
 }
 
-function toggleTask(taskId) {
+window.toggleExpandTask = function(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (task) {
+        task.expanded = !task.expanded;
+        saveDataLocalOnly();
+        renderTasks(); 
+    }
+};
+
+window.toggleSubtask = function(taskId, idx) {
     const task = state.tasks.find(t => t.id === taskId);
     if (!task) return;
     
     const goal = state.goals.find(g => g.id === task.goalId);
+    task.subtasks[idx] = !task.subtasks[idx];
     
-    if (task.completed) {
-        task.completed = false;
-        if (goal) goal.completedUnits -= task.units;
-    } else {
-        task.completed = true;
-        if (goal) goal.completedUnits += task.units;
+    if (goal) {
+        goal.completedUnits += task.subtasks[idx] ? 1 : -1;
     }
     
     saveData();
     renderAll();
     checkStreak();
-}
+};
 
 function checkStreak() {
     if (state.tasks.length > 0) {
-        const allDone = state.tasks.every(t => t.completed);
+        const allDone = state.tasks.every(t => t.subtasks && t.subtasks.every(Boolean));
         const todayStr = getTodayStr();
         
         if (allDone && state.lastCompletedDate !== todayStr) {
@@ -379,6 +425,7 @@ function renderAll() {
     renderTasks();
     renderSummary();
     renderGarden();
+    renderCalendar();
 }
 
 function renderSettings() {
@@ -433,30 +480,54 @@ function renderTasks() {
     }
 
     state.tasks.forEach(task => {
+        if (task.completed !== undefined) {
+             task.subtasks = new Array(task.units).fill(task.completed);
+             delete task.completed;
+        }
+        if (task.expanded === undefined) task.expanded = false;
+
+        const checkedCount = task.subtasks.filter(Boolean).length;
+        const allDone = checkedCount === task.units;
+        const progressPercent = Math.round((checkedCount / task.units) * 100) || 0;
+
         const li = document.createElement('li');
-        li.className = `task-item subject-${task.subject} ${task.completed ? 'completed' : ''}`;
+        li.className = `task-item subject-${task.subject} ${allDone ? 'completed' : ''}`;
         
+        let subtasksHtml = task.subtasks.map((isChecked, idx) => `
+            <li class="subtask-item ${isChecked ? 'completed' : ''}">
+                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSubtask('${task.id}', ${idx})">
+                단위 ${idx + 1}
+            </li>
+        `).join('');
+
         li.innerHTML = `
-            <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}')">
-            <div class="task-details">
-                <div class="task-desc">${task.name}</div>
-                <div class="task-meta">
-                    <span style="color: ${SUBJECT_COLORS[task.subject]}"><i class="fa-solid fa-tag"></i> ${SUBJECT_NAMES[task.subject]}</span>
-                    <span><i class="fa-regular fa-clock"></i> 예상 ${task.duration}분</span>
-                    <span>🔥 ${task.priority}순위</span>
+            <div class="task-header">
+                <div class="task-header-left">
+                    <div class="task-desc">${task.name}</div>
+                    <div class="task-meta">
+                        <span style="color: ${SUBJECT_COLORS[task.subject]}"><i class="fa-solid fa-tag"></i> ${SUBJECT_NAMES[task.subject]}</span>
+                        <span>🔥 ${task.priority}순위</span>
+                    </div>
+                </div>
+                <div class="task-progress-container">
+                    <div class="task-progress-bar"><div class="task-progress-fill" style="width: ${progressPercent}%"></div></div>
+                    <div class="task-progress-text">${checkedCount}/${task.units}</div>
+                    <button class="toggle-subtasks-btn ${task.expanded ? 'open' : ''}" onclick="toggleExpandTask('${task.id}')"><i class="fa-solid fa-chevron-down"></i></button>
                 </div>
             </div>
+            <ul class="subtasks-list ${task.expanded ? 'open' : ''}">
+                ${subtasksHtml}
+            </ul>
         `;
         taskList.appendChild(li);
     });
 }
 
 function renderSummary() {
-    const totalDuration = state.tasks.reduce((sum, t) => sum + t.duration, 0);
     const totalUnits = state.tasks.reduce((sum, t) => sum + t.units, 0);
-    const completedUnits = state.tasks.filter(t => t.completed).reduce((sum, t) => sum + t.units, 0);
+    const completedUnits = state.tasks.reduce((sum, t) => sum + (t.subtasks ? t.subtasks.filter(Boolean).length : 0), 0);
     
-    todayEstimatedTime.innerText = `${totalDuration}분`;
+    if(todayEstimatedTime) todayEstimatedTime.parentElement.style.display = 'none';
     todayTaskCount.innerText = `${totalUnits} 단위`;
     
     let percentage = totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
@@ -468,7 +539,7 @@ function renderGarden() {
     streakCount.innerText = state.streak;
     
     const totalUnits = state.tasks.reduce((sum, t) => sum + t.units, 0);
-    const completedUnits = state.tasks.filter(t => t.completed).reduce((sum, t) => sum + t.units, 0);
+    const completedUnits = state.tasks.reduce((sum, t) => sum + (t.subtasks ? t.subtasks.filter(Boolean).length : 0), 0);
     
     let percentage = totalUnits > 0 ? (completedUnits / totalUnits) * 100 : 0;
     
@@ -520,6 +591,127 @@ function fireConfetti() {
         confetti.style.animation = `fall ${Math.random() * 3 + 2}s linear forwards`;
         confettiContainer.appendChild(confetti);
         setTimeout(() => confetti.remove(), 5000);
+    }
+}
+
+function simulateSchedule() {
+    const todayStr = getTodayStr();
+    let simDate = new Date(todayStr);
+    
+    let maxDate = new Date(todayStr);
+    state.goals.forEach(g => {
+        let d = new Date(g.deadline);
+        if (d > maxDate) maxDate = d;
+    });
+    
+    const maxCalendarDate = new Date(todayStr);
+    maxCalendarDate.setUTCDate(maxCalendarDate.getUTCDate() + 27);
+    if (maxDate > maxCalendarDate) maxDate = maxCalendarDate;
+    
+    const schedule = {};
+    let simGoals = state.goals.map(g => ({...g, simCompleted: g.completedUnits}));
+    
+    schedule[todayStr] = state.tasks.map(t => ({ subject: t.subject, units: t.units }));
+    simGoals.forEach(g => {
+        const t = state.tasks.find(task => task.goalId === g.id);
+        if (t) g.simCompleted += t.units;
+    });
+    
+    simDate.setUTCDate(simDate.getUTCDate() + 1);
+    
+    while (simDate <= maxDate) {
+        const dStr = simDate.toISOString().split('T')[0];
+        let todayWeight = getWeightOfDay(dStr);
+        let dailyTasks = [];
+        
+        if (todayWeight > 0) {
+            simGoals.forEach(goal => {
+                if (goal.simCompleted >= goal.totalUnits) return;
+                
+                let totalWeight = 0;
+                let currentDate = new Date(dStr);
+                let deadlineDate = new Date(goal.deadline);
+                
+                if (goal.priority === 1) {
+                    let diffDays = (deadlineDate - new Date(todayStr)) / (1000 * 60 * 60 * 24);
+                    if (diffDays > 4) deadlineDate = new Date(new Date(todayStr).getTime() + (diffDays * 0.75) * 24 * 60 * 60 * 1000);
+                }
+                
+                if (currentDate > deadlineDate) return;
+                
+                for (let d = new Date(currentDate); d <= deadlineDate; d.setUTCDate(d.getUTCDate() + 1)) {
+                    totalWeight += getWeightOfDay(d.toISOString().split('T')[0]);
+                }
+                if (totalWeight === 0) totalWeight = todayWeight;
+                
+                const remainingUnits = goal.totalUnits - goal.simCompleted;
+                let dailyQuota = Math.ceil((remainingUnits / totalWeight) * todayWeight);
+                if (dailyQuota > remainingUnits) dailyQuota = remainingUnits;
+                
+                if (dailyQuota > 0) {
+                    dailyTasks.push({ subject: goal.subject, units: dailyQuota });
+                    goal.simCompleted += dailyQuota;
+                }
+            });
+        }
+        schedule[dStr] = dailyTasks;
+        simDate.setUTCDate(simDate.getUTCDate() + 1);
+    }
+    
+    return { schedule, maxDate };
+}
+
+function renderCalendar() {
+    const calendarGrid = document.getElementById('calendarGrid');
+    if (!calendarGrid) return;
+    calendarGrid.innerHTML = '';
+    
+    const todayStr = getTodayStr();
+    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    
+    days.forEach(d => {
+        const div = document.createElement('div');
+        div.className = 'calendar-day-header';
+        div.innerText = d;
+        calendarGrid.appendChild(div);
+    });
+    
+    const { schedule } = simulateSchedule();
+    
+    let currentD = new Date(todayStr);
+    currentD.setUTCDate(currentD.getUTCDate() - currentD.getDay()); // Start from Sunday
+    
+    for (let i = 0; i < 28; i++) {
+        const dStr = currentD.toISOString().split('T')[0];
+        const cell = document.createElement('div');
+        cell.className = 'calendar-cell';
+        if (dStr < todayStr) cell.classList.add('past');
+        if (getWeightOfDay(dStr) === 0) cell.classList.add('blackout');
+        
+        const dateSpan = document.createElement('div');
+        dateSpan.className = 'calendar-date';
+        dateSpan.innerHTML = `<span>${currentD.getUTCDate()}일</span>`;
+        if (dStr === todayStr) dateSpan.innerHTML += `<span style="color:var(--success-color)">오늘</span>`;
+        cell.appendChild(dateSpan);
+        
+        if (schedule[dStr] && schedule[dStr].length > 0) {
+            schedule[dStr].forEach(t => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = 'calendar-task';
+                taskDiv.style.backgroundColor = SUBJECT_COLORS[t.subject];
+                taskDiv.innerText = `${SUBJECT_NAMES[t.subject]} ${t.units}`;
+                cell.appendChild(taskDiv);
+            });
+        } else if (dStr >= todayStr && getWeightOfDay(dStr) > 0) {
+            const noTask = document.createElement('div');
+            noTask.className = 'calendar-task';
+            noTask.style.backgroundColor = '#ccc';
+            noTask.innerText = '휴무';
+            cell.appendChild(noTask);
+        }
+        
+        calendarGrid.appendChild(cell);
+        currentD.setUTCDate(currentD.getUTCDate() + 1);
     }
 }
 
