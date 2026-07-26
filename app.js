@@ -1,4 +1,4 @@
-const SYNC_URL = 'https://script.google.com/macros/s/AKfycbx-6hTQxNX8a-jorCVmg_U60gkEfZAUpzfp1oeYMiO9nFbh4IahKY4G_lqBtlwwnb9tjA/exec';
+const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwTQrXCfpyb-LmO5f5mpn8Nwoq0HINKxg-B23eILdwyqHf_ACLtJWucTFm-El4eOdptCQ/exec';
 
 const SUBJECT_COLORS = { math: '#3498DB', science: '#2ECC71', english: '#F39C12', korean: '#9B59B6' };
 const SUBJECT_NAMES = { math: '수학', science: '과학', english: '영어', korean: '국어' };
@@ -88,6 +88,9 @@ function saveDataLocalOnly() {
 }
 
 function saveData() {
+    if (typeof fullSchedule !== 'undefined' && Object.keys(fullSchedule).length > 0) {
+        state.fullSchedule = fullSchedule;
+    }
     saveDataLocalOnly();
     syncDataToCloud();
 }
