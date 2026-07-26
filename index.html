@@ -25,8 +25,107 @@
 
         <main>
             <div class="grid-layout">
-                <!-- Left Column (Settings & Goal Entry) -->
+                <!-- Left Column (Dashboard & Generated Tasks) -->
                 <div class="left-col">
+                    <section class="glass-panel summary-section">
+                         <h2><i class="fa-solid fa-chart-pie"></i> 오늘의 학습 요약</h2>
+                         <div class="summary-box">
+                             <div class="summary-item">
+                                 <span class="summary-label">오늘 할당된 총 단위</span>
+                                 <span class="summary-value" id="todayTaskCount">0 단위</span>
+                             </div>
+                         </div>
+                    </section>
+
+                    <section class="glass-panel tasks-section">
+                        <h2><i class="fa-solid fa-list-check"></i> 오늘의 자동 생성 체크리스트</h2>
+                        <div class="progress-container">
+                            <div class="progress-labels">
+                                <span>오늘의 진척도 (분량 기준)</span>
+                                <span id="progressText">0%</span>
+                            </div>
+                            <div class="progress-bar-bg">
+                                <div id="progressBar" class="progress-bar-fill"></div>
+                            </div>
+                        </div>
+                        <ul id="taskList" class="task-list">
+                            <!-- Tasks will be injected here -->
+                        </ul>
+                    </section>
+                </div>
+
+                <!-- Right Column (Calendar & Garden) -->
+                <div class="right-col">
+                    <section class="dashboard-section">
+                        <div class="section-header">
+                            <h2><i class="fa-solid fa-calendar-days"></i> 향후 스케줄 요약</h2>
+                        </div>
+                        <div class="glass-panel">
+                            <div id="calendarGrid" class="calendar-grid">
+                                <!-- Calendar will be populated by JS -->
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="glass-panel garden-section mt-24">
+                        <h2><i class="fa-solid fa-seedling"></i> 성취의 정원</h2>
+                        <div class="streak-badge">
+                            🔥 <span id="streakCount">0</span>일 연속 달성
+                        </div>
+                        <div id="gardenArea" class="garden-area">
+                            <div id="gardenEmoji" class="garden-emoji">🌱</div>
+                            <p id="gardenText" class="garden-text">오늘의 학습을 시작해보세요!</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+            
+            <hr style="margin: 40px 0; border: none; border-top: 2px dashed rgba(0,0,0,0.1);">
+
+            <div class="grid-layout">
+                <!-- Left Column (Goal Entry) -->
+                <div class="left-col">
+                    <section class="glass-panel add-task-section">
+                        <h2><i class="fa-solid fa-bullseye"></i> 새 장기 목표 등록</h2>
+                        <form id="addGoalForm">
+                            <div class="form-group">
+                                <label for="goalSubject">과목</label>
+                                <select id="goalSubject" required>
+                                    <option value="math">수학</option>
+                                    <option value="science">과학</option>
+                                    <option value="english">영어</option>
+                                    <option value="korean">국어</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="goalName">목표명</label>
+                                <input type="text" id="goalName" placeholder="예: 미적분 1 인강 수강" required>
+                            </div>
+                            <div class="flex-row">
+                                <div class="form-group">
+                                    <label for="goalTotalUnits">총 분량 (예: 57강, 100페이지)</label>
+                                    <input type="number" id="goalTotalUnits" min="1" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="goalDeadline">마감일</label>
+                                <input type="date" id="goalDeadline" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="goalPriority">우선순위 (1순위가 앞날짜에 집중 배치됨)</label>
+                                <select id="goalPriority" required>
+                                    <option value="1">1순위 (필수/최우선)</option>
+                                    <option value="2">2순위 (보통)</option>
+                                    <option value="3">3순위 (선택/후순위)</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">목표 등록 및 자동 스케줄링</button>
+                        </form>
+                    </section>
+                </div>
+
+                <!-- Right Column (Settings) -->
+                <div class="right-col">
                     <section class="glass-panel settings-section">
                         <h2><i class="fa-solid fa-sliders"></i> 스케줄링 환경 설정</h2>
                         <div class="settings-group">
@@ -68,97 +167,8 @@
                             <ul id="blackoutPeriodList" class="period-list"></ul>
                         </div>
                     </section>
-
-                    <section class="glass-panel add-task-section">
-                        <h2><i class="fa-solid fa-bullseye"></i> 새 장기 목표 등록</h2>
-                        <form id="addGoalForm">
-                            <div class="form-group">
-                                <label for="goalSubject">과목</label>
-                                <select id="goalSubject" required>
-                                    <option value="math">수학</option>
-                                    <option value="science">과학</option>
-                                    <option value="english">영어</option>
-                                    <option value="korean">국어</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="goalName">목표명</label>
-                                <input type="text" id="goalName" placeholder="예: 미적분 1 인강 수강" required>
-                            </div>
-                            <div class="flex-row">
-                                <div class="form-group">
-                                    <label for="goalTotalUnits">총 분량 (예: 57강, 100페이지)</label>
-                                    <input type="number" id="goalTotalUnits" min="1" required>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="goalDeadline">마감일</label>
-                                <input type="date" id="goalDeadline" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="goalPriority">우선순위 (1순위가 앞날짜에 집중 배치됨)</label>
-                                <select id="goalPriority" required>
-                                    <option value="1">1순위 (필수/최우선)</option>
-                                    <option value="2">2순위 (보통)</option>
-                                    <option value="3">3순위 (선택/후순위)</option>
-                                </select>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">목표 등록 및 자동 스케줄링</button>
-                        </form>
-                    </section>
-                </div>
-
-                <!-- Right Column (Dashboard & Generated Tasks) -->
-                <div class="right-col">
-                    <section class="glass-panel summary-section">
-                         <h2><i class="fa-solid fa-chart-pie"></i> 오늘의 학습 요약</h2>
-                         <div class="summary-box">
-                             <div class="summary-item">
-                                 <span class="summary-label">오늘 할당된 총 단위</span>
-                                 <span class="summary-value" id="todayTaskCount">0 단위</span>
-                             </div>
-                         </div>
-                    </section>
-
-                    <section class="glass-panel tasks-section">
-                        <h2><i class="fa-solid fa-list-check"></i> 오늘의 자동 생성 체크리스트</h2>
-                        <div class="progress-container">
-                            <div class="progress-labels">
-                                <span>오늘의 진척도 (분량 기준)</span>
-                                <span id="progressText">0%</span>
-                            </div>
-                            <div class="progress-bar-bg">
-                                <div id="progressBar" class="progress-bar-fill"></div>
-                            </div>
-                        </div>
-                        <ul id="taskList" class="task-list">
-                            <!-- Tasks will be injected here -->
-                        </ul>
-                    </section>
-
-                    <section class="glass-panel garden-section">
-                        <h2><i class="fa-solid fa-seedling"></i> 성취의 정원</h2>
-                        <div class="streak-badge">
-                            🔥 <span id="streakCount">0</span>일 연속 달성
-                        </div>
-                        <div id="gardenArea" class="garden-area">
-                            <div id="gardenEmoji" class="garden-emoji">🌱</div>
-                            <p id="gardenText" class="garden-text">오늘의 학습을 시작해보세요!</p>
-                        </div>
-                    </section>
                 </div>
             </div>
-            
-            <section class="dashboard-section mt-24">
-                <div class="section-header">
-                    <h2><i class="fa-solid fa-calendar-days"></i> 향후 스케줄 요약</h2>
-                </div>
-                <div class="glass-panel">
-                    <div id="calendarGrid" class="calendar-grid">
-                        <!-- Calendar will be populated by JS -->
-                    </div>
-                </div>
-            </section>
 
             <section class="glass-panel all-goals-section mt-24">
                 <h2><i class="fa-solid fa-list"></i> 진행 중인 전체 목표 현황</h2>
