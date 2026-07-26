@@ -156,6 +156,16 @@
                         </div>
 
                         <div class="settings-group">
+                            <label>📧 이메일 알림 시간 설정 (자동 푸시)</label>
+                            <div class="date-range-inputs">
+                                <input type="time" id="notificationTimeInput">
+                                <button id="addNotificationTimeBtn" class="btn btn-primary btn-sm">추가</button>
+                            </div>
+                            <ul id="notificationTimeList" class="period-list"></ul>
+                            <small style="color: #e74c3c; display: block; margin-top: 5px;">* 시간 변경 시 백엔드 구글 권한 재인증이 필요할 수 있습니다.</small>
+                        </div>
+
+                        <div class="settings-group">
                             <label>넉넉한 기간 추가 (방학 등)</label>
                             <div class="date-range-inputs">
                                 <input type="date" id="availStartDate">
