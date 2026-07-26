@@ -11,20 +11,41 @@
     <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
+    <nav class="bottom-nav">
+        <button class="nav-btn active" onclick="switchTab('tab-dashboard')">
+            <i class="fa-solid fa-house"></i>
+            <span>오늘</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('tab-calendar')">
+            <i class="fa-solid fa-calendar-days"></i>
+            <span>달력</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('tab-goals')">
+            <i class="fa-solid fa-bullseye"></i>
+            <span>목표</span>
+        </button>
+        <button class="nav-btn" onclick="switchTab('tab-settings')">
+            <i class="fa-solid fa-sliders"></i>
+            <span>설정</span>
+        </button>
+    </nav>
+
     <div class="app-container">
         <header>
             <div class="header-content">
-                <h1><i class="fa-solid fa-leaf"></i> ZeroDebt</h1>
-                <p>장기 목표를 설정하면 매일의 학습량을 자동으로 분배합니다.</p>
+                <h1><i class="fa-solid fa-layer-group"></i> ZeroDebt</h1>
+                <p>스마트 학습 스케줄러</p>
             </div>
             <div class="header-actions">
-                <button id="syncBtn" class="btn btn-primary"><i class="fa-solid fa-cloud"></i> 구글 시트 동기화</button>
+                <button id="syncBtn" class="btn btn-primary"><i class="fa-solid fa-cloud"></i> 동기화</button>
                 <button id="undoPostponeBtn" class="btn btn-danger" style="display: none;"><i class="fa-solid fa-rotate-left"></i> 미루기 취소</button>
-                <button id="addUnexpectedBtn" class="btn btn-warning"><i class="fa-solid fa-bolt"></i> 돌발 변수 발생 (미루기/재분배)</button>
+                <button id="addUnexpectedBtn" class="btn btn-warning"><i class="fa-solid fa-bolt"></i> 돌발 변수</button>
             </div>
         </header>
 
         <main>
+            <!-- TAB: DASHBOARD -->
+            <section id="tab-dashboard" class="tab-pane active">
             <div class="grid-layout">
                 <!-- Left Column (Dashboard & Generated Tasks) -->
                 <div class="left-col">
@@ -55,9 +76,24 @@
                     </section>
                 </div>
 
-                <!-- Right Column (Calendar & Garden) -->
-                <div class="right-col">
-                    <section class="dashboard-section">
+                    <section class="glass-panel garden-section mt-24">
+                        <h2><i class="fa-solid fa-star"></i> 현재 성취도</h2>
+                        <div class="streak-badge" style="margin-bottom: 15px;">
+                            <i class="fa-solid fa-fire" style="color: #f59e0b;"></i> <span id="streakCount">0</span>일 연속 달성
+                        </div>
+                        <div id="gardenArea" class="garden-area" style="text-align: center; padding: 20px 0;">
+                            <i id="gardenIcon" class="fa-solid fa-circle-check" style="font-size: 3rem; color: var(--primary-light); margin-bottom: 15px; transition: all 0.3s ease;"></i>
+                            <p id="gardenText" class="garden-text" style="font-weight: 500; font-size: 1.1rem;">오늘의 학습을 시작해보세요!</p>
+                        </div>
+                    </section>
+                </div>
+            </section>
+
+            <!-- TAB: CALENDAR -->
+            <section id="tab-calendar" class="tab-pane">
+                <div class="grid-layout">
+                    <div class="left-col" style="grid-column: 1 / -1;">
+                        <section class="dashboard-section">
                         <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
                             <h2><i class="fa-solid fa-calendar-days"></i> 스케줄 캘린더</h2>
                             <div class="calendar-nav">
@@ -75,26 +111,16 @@
                             </div>
                         </div>
                     </section>
-
-                    <section class="glass-panel garden-section mt-24">
-                        <h2><i class="fa-solid fa-seedling"></i> 성취의 정원</h2>
-                        <div class="streak-badge">
-                            🔥 <span id="streakCount">0</span>일 연속 달성
-                        </div>
-                        <div id="gardenArea" class="garden-area">
-                            <div id="gardenEmoji" class="garden-emoji">🌱</div>
-                            <p id="gardenText" class="garden-text">오늘의 학습을 시작해보세요!</p>
                         </div>
                     </section>
                 </div>
-            </div>
-            
-            <hr style="margin: 40px 0; border: none; border-top: 2px dashed rgba(0,0,0,0.1);">
+            </section>
 
-            <div class="grid-layout">
-                <!-- Left Column (Goal Entry) -->
-                <div class="left-col">
-                    <section class="glass-panel add-task-section">
+            <!-- TAB: GOALS -->
+            <section id="tab-goals" class="tab-pane">
+                <div class="grid-layout">
+                    <div class="left-col" style="grid-column: 1 / -1;">
+                        <section class="glass-panel add-task-section">
                         <h2><i class="fa-solid fa-bullseye"></i> 새 장기 목표 등록</h2>
                         <form id="addGoalForm">
                             <div class="form-group">
@@ -131,12 +157,37 @@
                             </div>
                             <button type="submit" class="btn btn-primary w-100">목표 등록 및 자동 스케줄링</button>
                         </form>
+                        </form>
+                    </section>
+
+                    <section class="glass-panel all-goals-section mt-24">
+                        <h2><i class="fa-solid fa-list"></i> 진행 중인 전체 목표 현황</h2>
+                        <div class="table-container">
+                            <table id="goalsTable" class="goals-table">
+                                <thead>
+                                    <tr>
+                                        <th>과목</th>
+                                        <th>목표명</th>
+                                        <th>전체 진척도</th>
+                                        <th>마감일</th>
+                                        <th>우선순위</th>
+                                        <th>관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Goals will be injected here -->
+                                </tbody>
+                            </table>
+                        </div>
                     </section>
                 </div>
+            </section>
 
-                <!-- Right Column (Settings) -->
-                <div class="right-col">
-                    <section class="glass-panel settings-section">
+            <!-- TAB: SETTINGS -->
+            <section id="tab-settings" class="tab-pane">
+                <div class="grid-layout">
+                    <div class="left-col" style="grid-column: 1 / -1;">
+                        <section class="glass-panel settings-section">
                         <h2><i class="fa-solid fa-sliders"></i> 스케줄링 환경 설정</h2>
                         <div class="settings-group">
                             <label>넉넉한 요일 (여유 시간)</label>
@@ -189,26 +240,8 @@
                         </div>
                     </section>
                 </div>
-            </div>
-
-            <section class="glass-panel all-goals-section mt-24">
-                <h2><i class="fa-solid fa-list"></i> 진행 중인 전체 목표 현황</h2>
-                <div class="table-container">
-                    <table id="goalsTable" class="goals-table">
-                        <thead>
-                            <tr>
-                                <th>과목</th>
-                                <th>목표명</th>
-                                <th>전체 진척도</th>
-                                <th>마감일</th>
-                                <th>우선순위</th>
-                                <th>관리</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Goals will be injected here -->
-                        </tbody>
-                    </table>
+                        </div>
+                    </section>
                 </div>
             </section>
         </main>
