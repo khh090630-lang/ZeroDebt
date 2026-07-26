@@ -98,6 +98,19 @@ function setupEventListeners() {
     // Actions
     addUnexpectedBtn.addEventListener('click', postponeRemainingTasks);
     
+    const undoBtn = document.getElementById('undoPostponeBtn');
+    if (undoBtn) {
+        undoBtn.addEventListener('click', () => {
+            if (lastPrePostponeState) {
+                state = lastPrePostponeState;
+                lastPrePostponeState = null;
+                undoBtn.style.display = 'none';
+                saveData();
+                renderAll();
+                showToast('미루기가 취소되어 이전 상태로 복구되었습니다.', 'success');
+            }
+        });
+    }
     // Sync
     syncBtn.addEventListener('click', () => {
         fetchDataFromCloud();
@@ -358,6 +371,10 @@ function postponeRemainingTasks() {
         showToast('미룰 임무가 없습니다.', 'warning');
         return;
     }
+    
+    lastPrePostponeState = JSON.parse(JSON.stringify(state));
+    const undoBtn = document.getElementById('undoPostponeBtn');
+    if (undoBtn) undoBtn.style.display = 'inline-block';
     
     state.tasks = state.tasks.filter(t => {
         if(!t.subtasks) return false;
