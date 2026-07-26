@@ -58,10 +58,18 @@
                 <!-- Right Column (Calendar & Garden) -->
                 <div class="right-col">
                     <section class="dashboard-section">
-                        <div class="section-header">
-                            <h2><i class="fa-solid fa-calendar-days"></i> 향후 스케줄 요약</h2>
+                        <div class="section-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <h2><i class="fa-solid fa-calendar-days"></i> 스케줄 캘린더</h2>
+                            <div class="calendar-nav">
+                                <button class="btn btn-sm btn-primary" id="prevMonthBtn"><i class="fa-solid fa-chevron-left"></i></button>
+                                <span id="calendarMonthLabel" style="font-weight:600; font-size:1.1rem; margin: 0 15px;">2026년 7월</span>
+                                <button class="btn btn-sm btn-primary" id="nextMonthBtn"><i class="fa-solid fa-chevron-right"></i></button>
+                            </div>
                         </div>
                         <div class="glass-panel">
+                            <div class="calendar-dow">
+                                <div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div>
+                            </div>
                             <div id="calendarGrid" class="calendar-grid">
                                 <!-- Calendar will be populated by JS -->
                             </div>
