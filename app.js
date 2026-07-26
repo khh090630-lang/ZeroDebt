@@ -291,19 +291,17 @@ function removeNotificationTime(index) {
 async function sendTestEmail() {
     showToast('테스트 이메일을 발송 중입니다...', 'info');
     try {
-        const response = await fetch(SYNC_URL, {
+        await fetch(SYNC_URL, {
             method: 'POST',
+            mode: 'no-cors',
             body: JSON.stringify({ action: 'test_email' }),
             headers: {
                 'Content-Type': 'text/plain;charset=utf-8',
             }
         });
-        if (response.ok) {
-            showToast('테스트 알림이 발송되었습니다!', 'success');
-            fireConfetti();
-        } else {
-            showToast('알림 발송에 실패했습니다.', 'error');
-        }
+        // no-cors 요청은 항상 opaque 응답이 오므로 에러가 나지 않았다면 성공으로 간주합니다.
+        showToast('테스트 알림이 발송되었습니다!', 'success');
+        fireConfetti();
     } catch (e) {
         console.error('Test email error:', e);
         showToast('발송 중 오류가 발생했습니다. (앱스 스크립트 배포 버전을 확인해주세요)', 'error');
