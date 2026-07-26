@@ -35,7 +35,7 @@ body {
 }
 
 .app-container {
-    max-width: 1200px;
+    max-width: 800px;
     margin: 0 auto;
     padding: 20px;
 }
@@ -284,19 +284,22 @@ header {
     font-size: 0.9rem;
 }
 
-.form-group input, .form-group select {
+.form-group input, .form-group select, .date-range-inputs input[type="date"], .date-range-inputs input[type="time"] {
     width: 100%;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid rgba(0,0,0,0.1);
-    background: rgba(255,255,255,0.8);
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.08);
+    background: rgba(255,255,255,0.9);
     font-size: 1rem;
-    transition: border 0.3s;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
 }
 
-.form-group input:focus, .form-group select:focus {
+.form-group input:focus, .form-group select:focus, .date-range-inputs input:focus {
     outline: none;
-    border-color: var(--primary-color);
+    border-color: var(--accent-color);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
 }
 
 /* Dashboard Summary */
