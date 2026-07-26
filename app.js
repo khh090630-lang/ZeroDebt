@@ -709,28 +709,58 @@ function simulateSchedule(ignoreTodayState = false) {
             let rounded_exact = exact_total_quota > 0 && exact_total_quota < 1 ? 1 : Math.round(exact_total_quota);
             let total_quota = totalBase + Math.round(totalLeftoverFraction) + rounded_exact;
             
+            let groupedByPriority = {};
+            for (let goal of activeGoals) {
+                if (!groupedByPriority[goal.priority]) groupedByPriority[goal.priority] = [];
+                groupedByPriority[goal.priority].push(goal);
+            }
+            
+            let sortedPriorities = Object.keys(groupedByPriority).map(Number).sort((a, b) => a - b);
+            let remaining_total_quota = total_quota;
+            let assignments = {};
+            
+            for (let p of sortedPriorities) {
+                if (remaining_total_quota <= 0) break;
+                
+                let activeInGroup = [...groupedByPriority[p]];
+                activeInGroup.sort((a, b) => {
+                    let diff = (b.totalUnits - b.simCompleted) - (a.totalUnits - a.simCompleted);
+                    if (diff !== 0) return diff;
+                    return a.deadline.localeCompare(b.deadline);
+                });
+                
+                while (remaining_total_quota > 0 && activeInGroup.length > 0) {
+                    for (let i = 0; i < activeInGroup.length; i++) {
+                        if (remaining_total_quota <= 0) break;
+                        
+                        let goal = activeInGroup[i];
+                        if (!assignments[goal.id]) assignments[goal.id] = 0;
+                        
+                        assignments[goal.id]++;
+                        goal.simCompleted++;
+                        remaining_total_quota--;
+                        
+                        if (goal.totalUnits - goal.simCompleted <= 0) {
+                            activeInGroup.splice(i, 1);
+                            i--;
+                        }
+                    }
+                }
+            }
+            
             activeGoals.sort((a, b) => {
                 if (a.priority !== b.priority) return a.priority - b.priority;
                 return a.deadline.localeCompare(b.deadline);
             });
             
-            let remaining_total_quota = total_quota;
-            
             for (let goal of activeGoals) {
-                if (remaining_total_quota <= 0) break;
-                
-                let goal_remaining = goal.totalUnits - goal.simCompleted;
-                let assign = Math.min(goal_remaining, remaining_total_quota);
-                
-                if (assign > 0) {
+                if (assignments[goal.id] > 0) {
                     dailyTasks.push({ 
                         subject: goal.subject, 
-                        units: assign,
+                        units: assignments[goal.id],
                         unitString: goal.unitString || '단위',
                         goalId: goal.id
                     });
-                    goal.simCompleted += assign;
-                    remaining_total_quota -= assign;
                 }
             }
         }
