@@ -8,7 +8,8 @@ let state = {
         availDays: [], // 0-6
         availMultiplier: 2.0,
         availPeriods: [], // { start, end }
-        blackoutPeriods: [] // { start, end }
+        blackoutPeriods: [], // { start, end }
+        notificationTimes: [] // ["09:00", "20:00"]
     },
     goals: [], // { id, subject, name, totalUnits, unitTime, deadline, priority, completedUnits }
     tasks: [], // Generated tasks for today { id, goalId, subject, name, units, duration, priority, completed }
@@ -29,6 +30,10 @@ const addAvailPeriodBtn = document.getElementById('addAvailPeriodBtn');
 const availPeriodList = document.getElementById('availPeriodList');
 const addBlackoutPeriodBtn = document.getElementById('addBlackoutPeriodBtn');
 const blackoutPeriodList = document.getElementById('blackoutPeriodList');
+
+const notificationTimeInput = document.getElementById('notificationTimeInput');
+const addNotificationTimeBtn = document.getElementById('addNotificationTimeBtn');
+const notificationTimeList = document.getElementById('notificationTimeList');
 
 const addGoalForm = document.getElementById('addGoalForm');
 const goalUnitString = document.getElementById('goalUnitString');
@@ -128,6 +133,8 @@ function setupEventListeners() {
     
     addAvailPeriodBtn.addEventListener('click', () => addPeriod('avail'));
     addBlackoutPeriodBtn.addEventListener('click', () => addPeriod('blackout'));
+    
+    addNotificationTimeBtn.addEventListener('click', addNotificationTime);
 
     // Goals
     addGoalForm.addEventListener('submit', (e) => {
@@ -253,6 +260,30 @@ function removePeriod(type, index) {
     }
     saveData();
     forceRegenerateTasks();
+}
+
+function addNotificationTime() {
+    const timeVal = notificationTimeInput.value;
+    if (timeVal) {
+        if (!state.settings.notificationTimes) state.settings.notificationTimes = [];
+        if (!state.settings.notificationTimes.includes(timeVal)) {
+            state.settings.notificationTimes.push(timeVal);
+            state.settings.notificationTimes.sort();
+            saveData();
+            renderSettings();
+            showToast('알림 시간이 추가되었습니다.', 'success');
+        }
+        notificationTimeInput.value = '';
+    } else {
+        showToast('시간을 입력해주세요.', 'warning');
+    }
+}
+
+function removeNotificationTime(index) {
+    state.settings.notificationTimes.splice(index, 1);
+    saveData();
+    renderSettings();
+    showToast('알림 시간이 삭제되었습니다.', 'success');
 }
 
 function isDateInPeriods(dateStr, periods) {
@@ -484,6 +515,17 @@ function renderSettings() {
         li.innerHTML = `<span>${p.start} ~ ${p.end}</span> <button onclick="removePeriod('blackout', ${i})"><i class="fa-solid fa-xmark"></i></button>`;
         blackoutPeriodList.appendChild(li);
     });
+    
+    if (notificationTimeList) {
+        notificationTimeList.innerHTML = '';
+        if (state.settings.notificationTimes) {
+            state.settings.notificationTimes.forEach((t, i) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${t}</span> <button onclick="removeNotificationTime(${i})"><i class="fa-solid fa-xmark"></i></button>`;
+                notificationTimeList.appendChild(li);
+            });
+        }
+    }
 }
 
 function renderGoals() {
