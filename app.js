@@ -109,8 +109,9 @@ async function syncDataToCloud() {
     if (!SYNC_URL) return;
     
     try {
-        await fetch(SYNC_URL, {
+        fetch(SYNC_URL, {
             method: 'POST',
+            mode: 'no-cors',
             body: JSON.stringify(state),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
