@@ -84,13 +84,9 @@
                                 <input type="text" id="goalName" placeholder="예: 미적분 1 인강 수강" required>
                             </div>
                             <div class="flex-row">
-                                <div class="form-group half">
-                                    <label for="goalTotalUnits">총 분량 (강/페이지)</label>
-                                    <input type="number" id="goalTotalUnits" placeholder="예: 57" required min="1">
-                                </div>
-                                <div class="form-group half">
-                                    <label for="goalUnitTime">1단위당 시간(분)</label>
-                                    <input type="number" id="goalUnitTime" placeholder="예: 50" required min="1">
+                                <div class="form-group">
+                                    <label for="goalTotalUnits">총 분량 (예: 57강, 100페이지)</label>
+                                    <input type="number" id="goalTotalUnits" min="1" required>
                                 </div>
                             </div>
                             <div class="form-group">
@@ -116,11 +112,7 @@
                          <h2><i class="fa-solid fa-chart-pie"></i> 오늘의 학습 요약</h2>
                          <div class="summary-box">
                              <div class="summary-item">
-                                 <span class="summary-label">오늘 예상 소요 시간</span>
-                                 <span class="summary-value" id="todayEstimatedTime">0분</span>
-                             </div>
-                             <div class="summary-item">
-                                 <span class="summary-label">오늘 할당된 분량</span>
+                                 <span class="summary-label">오늘 할당된 총 단위</span>
                                  <span class="summary-value" id="todayTaskCount">0 단위</span>
                              </div>
                          </div>
@@ -155,6 +147,17 @@
                 </div>
             </div>
             
+            <section class="dashboard-section mt-24">
+                <div class="section-header">
+                    <h2><i class="fa-solid fa-calendar-days"></i> 향후 스케줄 요약</h2>
+                </div>
+                <div class="glass-panel">
+                    <div id="calendarGrid" class="calendar-grid">
+                        <!-- Calendar will be populated by JS -->
+                    </div>
+                </div>
+            </section>
+
             <section class="glass-panel all-goals-section mt-24">
                 <h2><i class="fa-solid fa-list"></i> 진행 중인 전체 목표 현황</h2>
                 <div class="table-container">
