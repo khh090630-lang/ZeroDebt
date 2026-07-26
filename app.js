@@ -43,6 +43,13 @@ const confettiContainer = document.getElementById('confetti');
 
 const syncBtn = document.getElementById('syncBtn');
 
+const editGoalModal = document.getElementById('editGoalModal');
+const editGoalForm = document.getElementById('editGoalForm');
+const editGoalId = document.getElementById('editGoalId');
+const editGoalName = document.getElementById('editGoalName');
+const editGoalDeadline = document.getElementById('editGoalDeadline');
+const editGoalPriority = document.getElementById('editGoalPriority');
+const editGoalTotalUnits = document.getElementById('editGoalTotalUnits');
 // Initialization
 function init() {
     loadData();
@@ -94,6 +101,13 @@ function setupEventListeners() {
         e.preventDefault();
         addGoal();
     });
+
+    if (editGoalForm) {
+        editGoalForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveEditGoal();
+        });
+    }
 
     // Actions
     addUnexpectedBtn.addEventListener('click', postponeRemainingTasks);
@@ -297,6 +311,7 @@ function distributeGoalsForToday(isForce = false) {
         }
         
         let totalWeight = 0;
+        let remainingDays = 0;
         let todayWeight = getWeightOfDay(todayStr);
         
         let currentDate = new Date(todayStr);
@@ -311,17 +326,26 @@ function distributeGoalsForToday(isForce = false) {
         
         for (let d = new Date(currentDate); d <= deadlineDate; d.setUTCDate(d.getUTCDate() + 1)) {
             const dStr = d.toISOString().split('T')[0];
-            totalWeight += getWeightOfDay(dStr);
+            const w = getWeightOfDay(dStr);
+            totalWeight += w;
+            if (w > 0) remainingDays++;
         }
         
         if (totalWeight === 0) totalWeight = todayWeight; 
         
         const remainingUnits = goal.totalUnits - goal.completedUnits;
         
-        // Wait, if existing task has completed units today, those are ALREADY counted in goal.completedUnits
-        // So remainingUnits is accurate for FUTURE days, but dailyQuota for today shouldn't shrink just because they checked it off.
-        // It's actually a bit simpler: just calculate the quota.
-        let dailyQuota = todayWeight === 0 ? 0 : Math.ceil((remainingUnits / totalWeight) * todayWeight);
+        let dailyQuota = 0;
+        if (remainingUnits >= remainingDays && remainingDays > 0 && todayWeight > 0) {
+            dailyQuota = 1;
+            let leftoverUnits = remainingUnits - remainingDays;
+            let leftoverWeight = totalWeight - remainingDays;
+            if (leftoverWeight > 0 && leftoverUnits > 0) {
+                dailyQuota += Math.round((leftoverUnits / leftoverWeight) * (todayWeight - 1));
+            }
+        } else if (todayWeight > 0) {
+            dailyQuota = Math.ceil((remainingUnits / totalWeight) * todayWeight);
+        }
         
         if (dailyQuota > remainingUnits) dailyQuota = remainingUnits;
         
@@ -483,7 +507,10 @@ function renderGoals() {
             </td>
             <td>${goal.deadline}</td>
             <td>${goal.priority}순위</td>
-            <td><button class="btn btn-sm btn-danger" onclick="removeGoal('${goal.id}')"><i class="fa-solid fa-trash"></i></button></td>
+            <td>
+                <button class="btn btn-sm btn-primary" style="margin-right: 5px;" onclick="openEditModal('${goal.id}')"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="removeGoal('${goal.id}')"><i class="fa-solid fa-trash"></i></button>
+            </td>
         `;
         goalsTableBody.appendChild(tr);
     });
@@ -647,6 +674,7 @@ function simulateSchedule() {
                 if (goal.simCompleted >= goal.totalUnits) return;
                 
                 let totalWeight = 0;
+                let remainingDays = 0;
                 let currentDate = new Date(dStr);
                 let deadlineDate = new Date(goal.deadline);
                 
@@ -658,12 +686,25 @@ function simulateSchedule() {
                 if (currentDate > deadlineDate) return;
                 
                 for (let d = new Date(currentDate); d <= deadlineDate; d.setUTCDate(d.getUTCDate() + 1)) {
-                    totalWeight += getWeightOfDay(d.toISOString().split('T')[0]);
+                    const w = getWeightOfDay(d.toISOString().split('T')[0]);
+                    totalWeight += w;
+                    if (w > 0) remainingDays++;
                 }
                 if (totalWeight === 0) totalWeight = todayWeight;
                 
                 const remainingUnits = goal.totalUnits - goal.simCompleted;
-                let dailyQuota = Math.ceil((remainingUnits / totalWeight) * todayWeight);
+                let dailyQuota = 0;
+                if (remainingUnits >= remainingDays && remainingDays > 0 && todayWeight > 0) {
+                    dailyQuota = 1;
+                    let leftoverUnits = remainingUnits - remainingDays;
+                    let leftoverWeight = totalWeight - remainingDays;
+                    if (leftoverWeight > 0 && leftoverUnits > 0) {
+                        dailyQuota += Math.round((leftoverUnits / leftoverWeight) * (todayWeight - 1));
+                    }
+                } else if (todayWeight > 0) {
+                    dailyQuota = Math.ceil((remainingUnits / totalWeight) * todayWeight);
+                }
+                
                 if (dailyQuota > remainingUnits) dailyQuota = remainingUnits;
                 
                 if (dailyQuota > 0) {
@@ -733,7 +774,50 @@ function renderCalendar() {
     }
 }
 
+function openEditModal(goalId) {
+    const goal = state.goals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    editGoalId.value = goal.id;
+    editGoalName.value = goal.name;
+    editGoalDeadline.value = goal.deadline;
+    editGoalPriority.value = goal.priority;
+    editGoalTotalUnits.value = goal.totalUnits;
+    editGoalTotalUnits.min = goal.completedUnits;
+    
+    editGoalModal.style.display = 'flex';
+}
+
+function closeEditModal() {
+    editGoalModal.style.display = 'none';
+    editGoalForm.reset();
+}
+
+function saveEditGoal() {
+    const id = editGoalId.value;
+    const goal = state.goals.find(g => g.id === id);
+    if (!goal) return;
+    
+    const newTotal = parseInt(editGoalTotalUnits.value);
+    if (newTotal < goal.completedUnits) {
+        showToast('총 분량은 현재 완료된 분량보다 작을 수 없습니다.', 'warning');
+        return;
+    }
+    
+    goal.name = editGoalName.value;
+    goal.deadline = editGoalDeadline.value;
+    goal.priority = parseInt(editGoalPriority.value);
+    goal.totalUnits = newTotal;
+    
+    closeEditModal();
+    forceRegenerateTasks();
+    saveData();
+    showToast('목표가 수정되었습니다.', 'success');
+}
+
 // Expose to window for inline HTML handlers
+window.openEditModal = openEditModal;
+window.closeEditModal = closeEditModal;
 window.removePeriod = removePeriod;
 window.removeGoal = removeGoal;
 
