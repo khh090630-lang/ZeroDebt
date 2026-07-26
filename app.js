@@ -294,7 +294,7 @@ async function sendTestEmail() {
         await fetch(SYNC_URL, {
             method: 'POST',
             mode: 'no-cors',
-            body: JSON.stringify({ action: 'test_email' }),
+            body: JSON.stringify({ action: 'test_email', state: state }),
             headers: {
                 'Content-Type': 'text/plain;charset=utf-8',
             }
@@ -652,22 +652,32 @@ function renderGarden() {
     
     let percentage = totalUnits > 0 ? (completedUnits / totalUnits) * 100 : 0;
     
+    const gardenIcon = document.getElementById('gardenIcon');
+    if (!gardenIcon) return; // wait for DOM
+    
+    // Reset classes
+    gardenIcon.className = 'fa-solid';
+    
     if (totalUnits === 0) {
-        gardenEmoji.innerText = '💤';
+        gardenIcon.classList.add('fa-bed');
+        gardenIcon.style.color = '#94a3b8';
         gardenText.innerText = '오늘은 휴식일입니다!';
-        gardenEmoji.style.transform = 'scale(1)';
+        gardenIcon.style.transform = 'scale(1)';
     } else if (percentage === 0) {
-        gardenEmoji.innerText = '🌱';
-        gardenText.innerText = '씨앗이 심어졌어요. 시작해볼까요?';
-        gardenEmoji.style.transform = 'scale(1)';
+        gardenIcon.classList.add('fa-circle-play');
+        gardenIcon.style.color = '#3b82f6';
+        gardenText.innerText = '학습을 시작해 목표를 달성하세요!';
+        gardenIcon.style.transform = 'scale(1)';
     } else if (percentage < 100) {
-        gardenEmoji.innerText = '🌿';
-        gardenText.innerText = '새싹이 자라나고 있어요!';
-        gardenEmoji.style.transform = 'scale(1.2)';
+        gardenIcon.classList.add('fa-spinner', 'fa-spin-pulse');
+        gardenIcon.style.color = '#f59e0b';
+        gardenText.innerText = '열심히 진행 중입니다!';
+        gardenIcon.style.transform = 'scale(1.2)';
     } else {
-        gardenEmoji.innerText = '🌳';
-        gardenText.innerText = '울창한 나무로 자랐어요! 완벽합니다!';
-        gardenEmoji.style.transform = 'scale(1.5)';
+        gardenIcon.classList.add('fa-circle-check');
+        gardenIcon.style.color = '#10b981';
+        gardenText.innerText = '오늘의 목표를 완벽하게 달성했습니다!';
+        gardenIcon.style.transform = 'scale(1.5)';
     }
 }
 
@@ -970,5 +980,18 @@ window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.removePeriod = removePeriod;
 window.removeGoal = removeGoal;
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.remove('active');
+    });
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    document.getElementById(tabId).classList.add('active');
+    document.querySelector(`.nav-btn[onclick="switchTab('${tabId}')"]`).classList.add('active');
+}
+window.switchTab = switchTab;
 
 init();
