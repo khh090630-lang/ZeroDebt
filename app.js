@@ -718,6 +718,5 @@ function renderCalendar() {
 // Expose to window for inline HTML handlers
 window.removePeriod = removePeriod;
 window.removeGoal = removeGoal;
-window.toggleTask = toggleTask;
 
 init();
