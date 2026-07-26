@@ -1,0 +1,16 @@
+{
+  "name": "ZeroDebt",
+  "short_name": "ZeroDebt",
+  "description": "당신의 밀린 공부와 할 일을 완벽하게 청산해주는 스마트 스케줄러",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f7f6",
+  "theme_color": "#2C3E50",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}
