@@ -34,6 +34,7 @@ const blackoutPeriodList = document.getElementById('blackoutPeriodList');
 const notificationTimeInput = document.getElementById('notificationTimeInput');
 const addNotificationTimeBtn = document.getElementById('addNotificationTimeBtn');
 const notificationTimeList = document.getElementById('notificationTimeList');
+const testEmailBtn = document.getElementById('testEmailBtn');
 
 const addGoalForm = document.getElementById('addGoalForm');
 const goalUnitString = document.getElementById('goalUnitString');
@@ -135,6 +136,7 @@ function setupEventListeners() {
     addBlackoutPeriodBtn.addEventListener('click', () => addPeriod('blackout'));
     
     addNotificationTimeBtn.addEventListener('click', addNotificationTime);
+    testEmailBtn.addEventListener('click', sendTestEmail);
 
     // Goals
     addGoalForm.addEventListener('submit', (e) => {
@@ -284,6 +286,28 @@ function removeNotificationTime(index) {
     saveData();
     renderSettings();
     showToast('알림 시간이 삭제되었습니다.', 'success');
+}
+
+async function sendTestEmail() {
+    showToast('테스트 이메일을 발송 중입니다...', 'info');
+    try {
+        const response = await fetch(SYNC_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'test_email' }),
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8',
+            }
+        });
+        if (response.ok) {
+            showToast('테스트 알림이 발송되었습니다!', 'success');
+            fireConfetti();
+        } else {
+            showToast('알림 발송에 실패했습니다.', 'error');
+        }
+    } catch (e) {
+        console.error('Test email error:', e);
+        showToast('발송 중 오류가 발생했습니다. (앱스 스크립트 배포 버전을 확인해주세요)', 'error');
+    }
 }
 
 function isDateInPeriods(dateStr, periods) {
