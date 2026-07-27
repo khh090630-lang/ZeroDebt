@@ -375,7 +375,7 @@ function addGoal() {
         subject: document.getElementById('goalSubject').value,
         name: document.getElementById('goalName').value,
         totalUnits: parseInt(document.getElementById('goalTotalUnits').value),
-        minsPerUnit: parseInt(document.getElementById('goalMinsPerUnit').value || 10),
+        minsPerUnit: parseFloat(document.getElementById('goalMinsPerUnit').value || 10),
         unitString: goalUnitString.value || '단위',
         startDate: startDateVal,
         deadline: deadlineVal,
@@ -811,9 +811,11 @@ function renderSummary() {
     
     if(todayEstimatedTime) {
         todayEstimatedTime.parentElement.style.display = 'block';
-        todayEstimatedTime.innerText = `${Math.floor(totalMins / 60)}시간 ${totalMins % 60}분`;
+        let rTotal = Math.round(totalMins);
+        todayEstimatedTime.innerText = `${Math.floor(rTotal / 60)}시간 ${rTotal % 60}분`;
     }
-    todayTaskCount.innerText = `${Math.floor(totalMins / 60)}시간 ${totalMins % 60}분`;
+    let rTotal2 = Math.round(totalMins);
+    todayTaskCount.innerText = `${Math.floor(rTotal2 / 60)}시간 ${rTotal2 % 60}분`;
     
     let percentage = totalMins > 0 ? Math.round((completedMins / totalMins) * 100) : 0;
     progressBar.style.width = `${percentage}%`;
@@ -1259,7 +1261,7 @@ function saveEditGoal() {
 
     goal.totalUnits = newTotal;
     goal.unitString = document.getElementById('editGoalUnitString').value || '단위';
-    goal.minsPerUnit = parseInt(document.getElementById('editGoalMinsPerUnit').value || 10);
+    goal.minsPerUnit = parseFloat(document.getElementById('editGoalMinsPerUnit').value || 10);
     
     closeEditModal();
     forceRegenerateTasks();
