@@ -16,8 +16,26 @@ let state = {
     history: {},
     lastGeneratedDate: null,
     streak: 0,
-    lastCompletedDate: null
+    lastCompletedDate: null,
+    exp: 0,
+    perfectDays: 0,
+    tier: '브론즈 (Bronze)'
 };
+
+const TIERS = [
+    { name: '아이언 (Iron)', icon: '⛓️', minExp: -Infinity, minDays: 0, color: '#475569' },
+    { name: '브론즈 (Bronze)', icon: '🥉', minExp: 0, minDays: 0, color: '#b45309' },
+    { name: '실버 (Silver)', icon: '🥈', minExp: 500, minDays: 3, color: '#94a3b8' },
+    { name: '골드 (Gold)', icon: '🥇', minExp: 1500, minDays: 7, color: '#facc15' },
+    { name: '플래티넘 (Platinum)', icon: '💠', minExp: 3000, minDays: 15, color: '#2dd4bf' },
+    { name: '에메랄드 (Emerald)', icon: '❇️', minExp: 5000, minDays: 30, color: '#10b981' },
+    { name: '다이아몬드 (Diamond)', icon: '💎', minExp: 7500, minDays: 50, color: '#3b82f6' },
+    { name: '마스터 (Master)', icon: '🔮', minExp: 10000, minDays: 75, color: '#8b5cf6' },
+    { name: '그랜드마스터 (GM)', icon: '👑', minExp: 15000, minDays: 100, color: '#ef4444' },
+    { name: '챌린저 (Challenger)', icon: '🏆', minExp: 20000, minDays: 150, color: '#f59e0b' }
+];
+
+let advanceDaysTracker = 0;
 
 let fullSchedule = {};
 let currentCalYear = new Date().getFullYear();
@@ -80,6 +98,9 @@ function loadData() {
     const savedData = localStorage.getItem('zeroDebtData_v2');
     if (savedData) {
         state = JSON.parse(savedData);
+        state.exp = state.exp || 0;
+        state.perfectDays = state.perfectDays || 0;
+        state.tier = state.tier || '브론즈 (Bronze)';
     }
     
     // Sync UI with settings
@@ -114,6 +135,15 @@ function setupEventListeners() {
         });
     }
     
+    const nextBtn = document.getElementById('nextMonthBtn');
+    if (nextBtn) {
+    const advanceTasksBtn = document.getElementById('advanceTasksBtn');
+    if (advanceTasksBtn) {
+        advanceTasksBtn.addEventListener('click', () => {
+            advanceTomorrowTasks();
+        });
+    }
+
     const nextBtn = document.getElementById('nextMonthBtn');
     if (nextBtn) {
         nextBtn.addEventListener('click', () => {
@@ -318,6 +348,7 @@ function addGoal() {
         subject: document.getElementById('goalSubject').value,
         name: document.getElementById('goalName').value,
         totalUnits: parseInt(document.getElementById('goalTotalUnits').value),
+        totalMins: parseInt(document.getElementById('goalTotalMins').value || (parseInt(document.getElementById('goalTotalUnits').value) * 10)),
         unitString: goalUnitString.value || '단위',
         deadline: document.getElementById('goalDeadline').value,
         priority: parseInt(document.getElementById('goalPriority').value),
@@ -362,9 +393,114 @@ function getWeightOfDay(dateStr) {
 function checkAndGenerateTasks() {
     const todayStr = getTodayStr();
     if (state.lastGeneratedDate !== todayStr) {
+        if (state.lastGeneratedDate) {
+            // Resolve yesterday's EXP and Perfect Days
+            const res = calculateTodayExp(state.tasks);
+            state.exp += res.expChange;
+            
+            if (res.isPerfect) {
+                state.perfectDays++;
+                state.streak++;
+                state.lastCompletedDate = state.lastGeneratedDate;
+            } else {
+                state.streak = 0;
+            }
+            
+            // Amnesty Rule for 0%
+            if (state.exp < 0) {
+                state.exp = -Math.abs(state.exp); // Allow negative for Iron
+            }
+            
+            checkTierPromotion(true);
+        }
+        
+        advanceDaysTracker = 0;
         distributeGoalsForToday();
     }
 }
+
+function getCurrentTierInfo(exp, days) {
+    let current = TIERS[0];
+    if (exp >= 0) current = TIERS[1];
+    for (let i = 2; i < TIERS.length; i++) {
+        if (exp >= TIERS[i].minExp && days >= TIERS[i].minDays) {
+            current = TIERS[i];
+        }
+    }
+    return current;
+}
+
+function calculateTodayExp(tasksObj) {
+    let baseMins = 0;
+    let completedMins = 0;
+    let advanceBonusExp = 0;
+    
+    tasksObj.forEach(t => {
+        let minsPerUnit = t.minsPerUnit || 10;
+        let total = t.units * minsPerUnit;
+        
+        let completedUnits = t.subtasks ? t.subtasks.filter(Boolean).length : 0;
+        let comp = completedUnits * minsPerUnit;
+        
+        if (t.advanceDays && t.advanceDays > 0) {
+            advanceBonusExp += comp * (t.advanceDays + 1); // 2x, 3x, 4x...
+        } else {
+            baseMins += total;
+            completedMins += comp;
+        }
+    });
+    
+    let isPerfect = false;
+    let expChange = 0;
+    
+    if (baseMins > 0) {
+        if (completedMins === baseMins) {
+            expChange = baseMins; // 1.0x
+            isPerfect = true;
+        } else if (completedMins === 0) {
+            expChange = -baseMins; // Penalty to drop to Iron
+        } else {
+            expChange = Math.floor(completedMins * 0.5); // 0.5x, no penalty
+        }
+    } else if (tasksObj.length > 0 && baseMins === 0) {
+        // Only advanced tasks completed today?
+        isPerfect = true; 
+    }
+    
+    expChange += advanceBonusExp;
+    return { expChange, isPerfect, advanceBonusExp };
+}
+
+function checkTierPromotion(showAnimation = false) {
+    let oldTierStr = state.tier;
+    let current = getCurrentTierInfo(state.exp, state.perfectDays);
+    state.tier = current.name;
+    
+    if (oldTierStr !== current.name) {
+        saveData();
+        if (showAnimation) {
+            const overlay = document.getElementById('promotionOverlay');
+            if (overlay) {
+                document.getElementById('promoIcon').innerText = current.icon;
+                
+                // Compare indices to check if it's promotion or demotion
+                let oldIndex = TIERS.findIndex(t => t.name === oldTierStr);
+                let newIndex = TIERS.findIndex(t => t.name === current.name);
+                
+                if (newIndex > oldIndex) {
+                    document.getElementById('promoTitle').innerText = '승급을 축하합니다!';
+                    fireConfetti();
+                } else {
+                    document.getElementById('promoTitle').innerText = '티어가 강등되었습니다...';
+                }
+                
+                document.getElementById('promoDesc').innerText = `${current.name} 티어 달성!`;
+                overlay.style.display = 'flex';
+            }
+        }
+    }
+}
+
 
 function forceRegenerateTasks() {
     distributeGoalsForToday(true);
@@ -409,6 +545,7 @@ function distributeGoalsForToday(isForce = false) {
                 existingTask.name = existingTask.name.replace(/\(\d+.*\)/, `(${simTask.units}${uStr})`);
             }
             existingTask.unitString = uStr;
+            existingTask.minsPerUnit = goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10;
             newTasks.push(existingTask);
         } else {
             newTasks.push({
@@ -420,7 +557,8 @@ function distributeGoalsForToday(isForce = false) {
                 priority: goal.priority,
                 unitString: uStr,
                 subtasks: new Array(simTask.units).fill(false),
-                expanded: false
+                expanded: false,
+                minsPerUnit: goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10
             });
         }
     });
@@ -647,37 +785,137 @@ function renderSummary() {
 function renderGarden() {
     streakCount.innerText = state.streak;
     
-    const totalUnits = state.tasks.reduce((sum, t) => sum + t.units, 0);
-    const completedUnits = state.tasks.reduce((sum, t) => sum + (t.subtasks ? t.subtasks.filter(Boolean).length : 0), 0);
+    const tierIconContainer = document.getElementById('tierIconContainer');
+    const tierName = document.getElementById('tierName');
+    const expProgressBar = document.getElementById('expProgressBar');
+    const expProgressText = document.getElementById('expProgressText');
+    const pdProgressBar = document.getElementById('pdProgressBar');
+    const pdProgressText = document.getElementById('pdProgressText');
+    const tierNextReq = document.getElementById('tierNextReq');
     
-    let percentage = totalUnits > 0 ? (completedUnits / totalUnits) * 100 : 0;
+    let currentTier = getCurrentTierInfo(state.exp, state.perfectDays);
+    let nextTierIndex = TIERS.findIndex(t => t.name === currentTier.name) + 1;
+    let nextTier = TIERS[nextTierIndex];
     
-    const gardenIcon = document.getElementById('gardenIcon');
-    if (!gardenIcon) return; // wait for DOM
+    if (tierIconContainer) tierIconContainer.innerText = currentTier.icon;
+    if (tierName) {
+        tierName.innerText = currentTier.name;
+        tierName.style.color = currentTier.color;
+    }
     
-    // Reset classes
-    gardenIcon.className = 'fa-solid';
-    
-    if (totalUnits === 0) {
-        gardenIcon.classList.add('fa-bed');
-        gardenIcon.style.color = '#94a3b8';
-        gardenText.innerText = '오늘은 휴식일입니다!';
-        gardenIcon.style.transform = 'scale(1)';
-    } else if (percentage === 0) {
-        gardenIcon.classList.add('fa-circle-play');
-        gardenIcon.style.color = '#3b82f6';
-        gardenText.innerText = '학습을 시작해 목표를 달성하세요!';
-        gardenIcon.style.transform = 'scale(1)';
-    } else if (percentage < 100) {
-        gardenIcon.classList.add('fa-spinner', 'fa-spin-pulse');
-        gardenIcon.style.color = '#f59e0b';
-        gardenText.innerText = '열심히 진행 중입니다!';
-        gardenIcon.style.transform = 'scale(1.2)';
+    if (nextTier) {
+        let expReq = nextTier.minExp;
+        let daysReq = nextTier.minDays;
+        let expDiff = Math.max(0, expReq - state.exp);
+        let pdDiff = Math.max(0, daysReq - state.perfectDays);
+        if (tierNextReq) {
+            if (expDiff === 0 && pdDiff === 0) {
+                tierNextReq.innerText = '조건을 달성했습니다! 내일 승급합니다!';
+            } else {
+                tierNextReq.innerText = `다음 티어까지: ${expDiff > 0 ? expDiff + ' EXP ' : ''}${pdDiff > 0 ? pdDiff + ' 완수 ' : ''}필요`;
+            }
+        }
+        
+        let minExpPrev = currentTier.minExp === -Infinity ? 0 : currentTier.minExp;
+        let totalExpRange = expReq - minExpPrev;
+        let expProg = totalExpRange > 0 ? Math.min(100, Math.max(0, ((state.exp - minExpPrev) / totalExpRange) * 100)) : 100;
+        
+        if (expProgressBar) expProgressBar.style.width = `${expProg}%`;
+        if (expProgressText) expProgressText.innerText = `${state.exp} / ${expReq}`;
+        
+        let minDaysPrev = currentTier.minDays;
+        let totalDaysRange = daysReq - minDaysPrev;
+        let daysProg = totalDaysRange > 0 ? Math.min(100, Math.max(0, ((state.perfectDays - minDaysPrev) / totalDaysRange) * 100)) : 100;
+        
+        if (pdProgressBar) pdProgressBar.style.width = `${daysProg}%`;
+        if (pdProgressText) pdProgressText.innerText = `${state.perfectDays} / ${daysReq}`;
+        
     } else {
-        gardenIcon.classList.add('fa-circle-check');
-        gardenIcon.style.color = '#10b981';
-        gardenText.innerText = '오늘의 목표를 완벽하게 달성했습니다!';
-        gardenIcon.style.transform = 'scale(1.5)';
+        if (tierNextReq) tierNextReq.innerText = '최고 티어에 도달했습니다!';
+        if (expProgressBar) expProgressBar.style.width = '100%';
+        if (expProgressText) expProgressText.innerText = 'MAX';
+        if (pdProgressBar) pdProgressBar.style.width = '100%';
+        if (pdProgressText) pdProgressText.innerText = 'MAX';
+    }
+    
+    // Update Today's predicted EXP
+    const { expChange } = calculateTodayExp(state.tasks);
+    const todayExpAmount = document.getElementById('todayExpAmount');
+    if (todayExpAmount) {
+        todayExpAmount.innerText = `${expChange > 0 ? '+' : ''}${expChange} EXP`;
+        if (expChange < 0) {
+            todayExpAmount.style.color = '#ef4444'; // red
+        } else {
+            todayExpAmount.style.color = '#3b82f6'; // blue
+        }
+    }
+    
+    // Update Advance button visibility
+    const advanceTasksContainer = document.getElementById('advanceTasksContainer');
+    let hasIncomplete = state.tasks.some(t => t.subtasks && t.subtasks.includes(false));
+    if (advanceTasksContainer) {
+        if (state.tasks.length > 0 && !hasIncomplete) {
+            advanceTasksContainer.style.display = 'block';
+            const btnText = document.getElementById('advanceBtnText');
+            if (btnText) {
+                btnText.innerText = `${advanceDaysTracker > 0 ? '다'.repeat(advanceDaysTracker) : ''}내일 분량 당겨하기 (EXP ${advanceDaysTracker + 2}배 보너스!)`;
+            }
+        } else {
+            advanceTasksContainer.style.display = 'none';
+        }
+    }
+}
+
+function advanceTomorrowTasks() {
+    advanceDaysTracker++;
+    const todayStr = getTodayStr();
+    
+    let d = new Date();
+    d.setDate(d.getDate() + advanceDaysTracker);
+    const targetStr = d.toISOString().split('T')[0];
+    
+    const { schedule } = simulateSchedule(true);
+    let advanceSimTasks = schedule[targetStr] || [];
+    
+    if (advanceSimTasks.length === 0) {
+        showToast('더 이상 당겨올 분량이 없습니다.', 'warning');
+        advanceDaysTracker--;
+        return;
+    }
+    
+    let addedCount = 0;
+    advanceSimTasks.forEach(simTask => {
+        let existingTask = state.tasks.find(t => t.goalId === simTask.goalId && t.advanceDays === advanceDaysTracker);
+        let goal = state.goals.find(g => g.id === simTask.goalId);
+        if (!goal) return;
+        
+        let uStr = goal.unitString || '단위';
+        
+        if (!existingTask) {
+            state.tasks.push({
+                id: 'task_adv_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                goalId: goal.id,
+                subject: goal.subject,
+                name: `${goal.name} (당겨하기: ${simTask.units}${uStr})`,
+                units: simTask.units,
+                priority: goal.priority,
+                unitString: uStr,
+                subtasks: new Array(simTask.units).fill(false),
+                expanded: false,
+                minsPerUnit: goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10,
+                advanceDays: advanceDaysTracker
+            });
+            addedCount++;
+        }
+    });
+    
+    if (addedCount > 0) {
+        saveData();
+        renderAll();
+        showToast(`${advanceDaysTracker > 1 ? advanceDaysTracker+'일 뒤' : '내일'}의 분량을 당겨왔습니다! 완료 시 EXP ${advanceDaysTracker + 1}배 획득!`, 'success');
+    } else {
+        showToast('추가로 당겨올 수 있는 분량이 없습니다.', 'warning');
+        advanceDaysTracker--;
     }
 }
 
