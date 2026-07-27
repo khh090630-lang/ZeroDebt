@@ -159,12 +159,13 @@
                         <form id="addGoalForm">
                             <div class="form-group">
                                 <label for="goalSubject">과목</label>
-                                <select id="goalSubject" required>
-                                    <option value="math">수학</option>
-                                    <option value="science">과학</option>
-                                    <option value="english">영어</option>
-                                    <option value="korean">국어</option>
-                                </select>
+                                <input type="text" id="goalSubject" list="subjectOptions" placeholder="예: 수학, 영어, 독서" required>
+                                <datalist id="subjectOptions">
+                                    <option value="수학"></option>
+                                    <option value="과학"></option>
+                                    <option value="영어"></option>
+                                    <option value="국어"></option>
+                                </datalist>
                             </div>
                             <div class="form-group">
                                 <label for="goalName">목표명</label>
@@ -198,7 +199,12 @@
                     </section>
 
                     <section class="glass-panel all-goals-section mt-24">
-                        <h2><i class="fa-solid fa-list"></i> 진행 중인 전체 목표 현황</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h2 style="margin-bottom: 0;"><i class="fa-solid fa-list"></i> 진행 중인 전체 목표 현황</h2>
+                            <select id="goalFilterSubject" onchange="renderGoals()" style="padding: 6px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; outline: none;">
+                                <option value="all">모든 과목 보기</option>
+                            </select>
+                        </div>
                         <div class="table-container">
                             <table id="goalsTable" class="goals-table">
                                 <thead>
@@ -294,6 +300,10 @@
             <h2><i class="fa-solid fa-pen"></i> 목표 수정</h2>
             <form id="editGoalForm">
                 <input type="hidden" id="editGoalId">
+                <div class="form-group">
+                    <label for="editGoalSubject">과목</label>
+                    <input type="text" id="editGoalSubject" list="subjectOptions" required>
+                </div>
                 <div class="form-group">
                     <label for="editGoalName">목표명</label>
                     <input type="text" id="editGoalName" required>
