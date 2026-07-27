@@ -11,7 +11,7 @@ let state = {
         blackoutPeriods: [], // { start, end }
         notificationTimes: [] // ["09:00", "20:00"]
     },
-    goals: [], // { id, subject, name, totalUnits, unitTime, deadline, allocationMode, completedUnits }
+    goals: [], // { id, subject, name, totalUnits, unitTime, deadline, completedUnits }
     tasks: [], // Generated tasks for today { id, goalId, subject, name, units, duration, completed }
     history: {},
     lastGeneratedDate: null,
@@ -78,7 +78,7 @@ const editGoalForm = document.getElementById('editGoalForm');
 const editGoalId = document.getElementById('editGoalId');
 const editGoalName = document.getElementById('editGoalName');
 const editGoalDeadline = document.getElementById('editGoalDeadline');
-const editGoalAllocationMode = document.getElementById('editGoalAllocationMode');
+
 const editGoalTotalUnits = document.getElementById('editGoalTotalUnits');
 // Initialization
 function init() {
@@ -102,13 +102,11 @@ function loadData() {
         state.perfectDays = state.perfectDays || 0;
         state.tier = state.tier || '브론즈 (Bronze)';
         
-        // Data Migration: priority to allocationMode
+        // Clean up legacy properties
         if (state.goals) {
             state.goals.forEach(g => {
-                if (g.priority !== undefined) {
-                    g.allocationMode = (g.priority === 1) ? 'focus' : 'balanced';
-                    delete g.priority;
-                }
+                delete g.priority;
+                delete g.allocationMode;
             });
         }
         if (state.tasks) {
@@ -366,7 +364,7 @@ function addGoal() {
         minsPerUnit: parseInt(document.getElementById('goalMinsPerUnit').value || 10),
         unitString: goalUnitString.value || '단위',
         deadline: document.getElementById('goalDeadline').value,
-        allocationMode: document.getElementById('goalAllocationMode').value,
+
         completedUnits: 0
     };
 
@@ -582,9 +580,6 @@ function distributeGoalsForToday(isForce = false) {
         let goalA = state.goals.find(g => g.id === a.goalId);
         let goalB = state.goals.find(g => g.id === b.goalId);
         if (!goalA || !goalB) return 0;
-        let modeA = goalA.allocationMode === 'focus' ? 0 : 1;
-        let modeB = goalB.allocationMode === 'focus' ? 0 : 1;
-        if (modeA !== modeB) return modeA - modeB;
         return goalA.deadline.localeCompare(goalB.deadline);
     });
     
@@ -731,7 +726,7 @@ function renderGoals() {
                 <div class="goal-progress-bar"><div class="goal-progress-fill" style="width: ${progressPercent}%"></div></div>
             </td>
             <td>${goal.deadline}</td>
-            <td>${goal.allocationMode === 'focus' ? '🔥 우선 집중' : '⚖️ 균형 병행'}</td>
+
             <td>
                 <button class="btn btn-sm btn-primary" style="margin-right: 5px;" onclick="openEditModal('${goal.id}')"><i class="fa-solid fa-pen"></i></button>
                 <button class="btn btn-sm btn-danger" onclick="removeGoal('${goal.id}')"><i class="fa-solid fa-trash"></i></button>
@@ -776,7 +771,7 @@ function renderTasks() {
                     <div class="task-desc">${task.name}</div>
                     <div class="task-meta">
                         <span style="color: ${SUBJECT_COLORS[task.subject]}"><i class="fa-solid fa-tag"></i> ${SUBJECT_NAMES[task.subject]}</span>
-                        <span>${(()=>{ let g = state.goals.find(x => x.id === task.goalId); return g && g.allocationMode === 'focus' ? '🔥 우선 집중' : '⚖️ 균형 병행'; })()}</span>
+
                     </div>
                 </div>
                 <div class="task-progress-container">
@@ -1064,11 +1059,8 @@ function simulateSchedule(ignoreTodayState = false) {
                 let assignments = {};
                 let remaining_capacity = total_capacity;
                 
-                let balancedGoals = activeGoals.filter(g => g.allocationMode === 'balanced' || !g.allocationMode);
-                let focusGoals = activeGoals.filter(g => g.allocationMode === 'focus');
-                
-                // Phase 1: Give balanced goals their exact planned quota
-                for (let goal of balancedGoals) {
+                // Phase 1: Give goals their exact planned quota
+                for (let goal of activeGoals) {
                     if (independentSchedules[goal.id] && independentSchedules[goal.id][dStr]) {
                         let planned = independentSchedules[goal.id][dStr];
                         if (planned > remaining_capacity) planned = remaining_capacity; // Safety cap
@@ -1080,42 +1072,17 @@ function simulateSchedule(ignoreTodayState = false) {
                     }
                 }
                 
-                // Phase 2: Give remaining capacity to focus goals (Earliest Deadline First)
-                if (remaining_capacity > 0 && focusGoals.length > 0) {
-                    focusGoals.sort((a, b) => {
-                        return a.deadline.localeCompare(b.deadline);
-                    });
-                    
-                    while (remaining_capacity > 0 && focusGoals.length > 0) {
-                        for (let i = 0; i < focusGoals.length; i++) {
-                            if (remaining_capacity <= 0) break;
-                            
-                            let goal = focusGoals[i];
-                            if (!assignments[goal.id]) assignments[goal.id] = 0;
-                            
-                            assignments[goal.id]++;
-                            goal.simCompleted++;
-                            remaining_capacity--;
-                            
-                            if (goal.totalUnits - goal.simCompleted <= 0) {
-                                focusGoals.splice(i, 1);
-                                i--;
-                            }
-                        }
-                    }
-                }
-                
-                // Phase 3: Give any remaining capacity to balanced goals (EDF)
-                if (remaining_capacity > 0 && balancedGoals.length > 0) {
-                     balancedGoals = balancedGoals.filter(g => g.totalUnits - g.simCompleted > 0);
-                     balancedGoals.sort((a, b) => {
+                // Phase 2: Give any remaining capacity to active goals (Earliest Deadline First)
+                if (remaining_capacity > 0) {
+                     let unfinishedGoals = activeGoals.filter(g => g.totalUnits - g.simCompleted > 0);
+                     unfinishedGoals.sort((a, b) => {
                         return a.deadline.localeCompare(b.deadline);
                      });
                      
-                     while (remaining_capacity > 0 && balancedGoals.length > 0) {
-                        for (let i = 0; i < balancedGoals.length; i++) {
+                     while (remaining_capacity > 0 && unfinishedGoals.length > 0) {
+                        for (let i = 0; i < unfinishedGoals.length; i++) {
                             if (remaining_capacity <= 0) break;
-                            let goal = balancedGoals[i];
+                            let goal = unfinishedGoals[i];
                             if (!assignments[goal.id]) assignments[goal.id] = 0;
                             
                             assignments[goal.id]++;
@@ -1123,7 +1090,7 @@ function simulateSchedule(ignoreTodayState = false) {
                             remaining_capacity--;
                             
                             if (goal.totalUnits - goal.simCompleted <= 0) {
-                                balancedGoals.splice(i, 1);
+                                unfinishedGoals.splice(i, 1);
                                 i--;
                             }
                         }
@@ -1131,9 +1098,6 @@ function simulateSchedule(ignoreTodayState = false) {
                 }
                 
                 activeGoals.sort((a, b) => {
-                    let aMode = a.allocationMode === 'focus' ? 0 : 1;
-                    let bMode = b.allocationMode === 'focus' ? 0 : 1;
-                    if (aMode !== bMode) return aMode - bMode;
                     return a.deadline.localeCompare(b.deadline);
                 });
                 
@@ -1232,7 +1196,7 @@ function openEditModal(goalId) {
     editGoalId.value = goal.id;
     editGoalName.value = goal.name;
     editGoalDeadline.value = goal.deadline;
-    editGoalAllocationMode.value = goal.allocationMode || 'balanced';
+
     editGoalTotalUnits.value = goal.totalUnits;
     document.getElementById('editGoalUnitString').value = goal.unitString || '단위';
     document.getElementById('editGoalMinsPerUnit').value = goal.minsPerUnit || (goal.totalMins ? Math.round(goal.totalMins / goal.totalUnits) : 10);
@@ -1259,7 +1223,7 @@ function saveEditGoal() {
     
     goal.name = editGoalName.value;
     goal.deadline = editGoalDeadline.value;
-    goal.allocationMode = editGoalAllocationMode.value;
+
     goal.totalUnits = newTotal;
     goal.unitString = document.getElementById('editGoalUnitString').value || '단위';
     goal.minsPerUnit = parseInt(document.getElementById('editGoalMinsPerUnit').value || 10);
