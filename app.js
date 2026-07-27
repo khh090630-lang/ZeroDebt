@@ -789,13 +789,19 @@ function renderTasks() {
 }
 
 function renderSummary() {
-    const totalUnits = state.tasks.reduce((sum, t) => sum + t.units, 0);
-    const completedUnits = state.tasks.reduce((sum, t) => sum + (t.subtasks ? t.subtasks.filter(Boolean).length : 0), 0);
+    const totalMins = state.tasks.reduce((sum, t) => sum + (t.units * (t.minsPerUnit || 10)), 0);
+    const completedMins = state.tasks.reduce((sum, t) => {
+        let done = t.subtasks ? t.subtasks.filter(Boolean).length : 0;
+        return sum + (done * (t.minsPerUnit || 10));
+    }, 0);
     
-    if(todayEstimatedTime) todayEstimatedTime.parentElement.style.display = 'none';
-    todayTaskCount.innerText = `${totalUnits} 단위`;
+    if(todayEstimatedTime) {
+        todayEstimatedTime.parentElement.style.display = 'block';
+        todayEstimatedTime.innerText = `${Math.floor(totalMins / 60)}시간 ${totalMins % 60}분`;
+    }
+    todayTaskCount.innerText = `${Math.floor(totalMins / 60)}시간 ${totalMins % 60}분`;
     
-    let percentage = totalUnits > 0 ? Math.round((completedUnits / totalUnits) * 100) : 0;
+    let percentage = totalMins > 0 ? Math.round((completedMins / totalMins) * 100) : 0;
     progressBar.style.width = `${percentage}%`;
     progressText.innerText = `${percentage}%`;
 }
