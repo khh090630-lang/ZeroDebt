@@ -1,7 +1,17 @@
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwTQrXCfpyb-LmO5f5mpn8Nwoq0HINKxg-B23eILdwyqHf_ACLtJWucTFm-El4eOdptCQ/exec';
 
-const SUBJECT_COLORS = { math: '#3498DB', science: '#2ECC71', english: '#F39C12', korean: '#9B59B6' };
-const SUBJECT_NAMES = { math: '수학', science: '과학', english: '영어', korean: '국어' };
+const SUBJECT_COLORS = { '수학': '#3498DB', '과학': '#2ECC71', '영어': '#F39C12', '국어': '#9B59B6' };
+const LEGACY_SUBJECT_NAMES = { math: '수학', science: '과학', english: '영어', korean: '국어' };
+
+function getSubjectColor(subjectName) {
+    if (SUBJECT_COLORS[subjectName]) return SUBJECT_COLORS[subjectName];
+    let hash = 0;
+    for (let i = 0; i < subjectName.length; i++) {
+        hash = subjectName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const color = Math.floor(Math.abs((Math.sin(hash) * 10000) % 1 * 16777215)).toString(16);
+    return '#' + '000000'.substring(0, 6 - color.length) + color;
+}
 
 let state = {
     settings: {
@@ -76,6 +86,7 @@ const syncBtn = document.getElementById('syncBtn');
 const editGoalModal = document.getElementById('editGoalModal');
 const editGoalForm = document.getElementById('editGoalForm');
 const editGoalId = document.getElementById('editGoalId');
+const editGoalSubject = document.getElementById('editGoalSubject');
 const editGoalName = document.getElementById('editGoalName');
 const editGoalStartDate = document.getElementById('editGoalStartDate');
 const editGoalDeadline = document.getElementById('editGoalDeadline');
@@ -106,6 +117,7 @@ function loadData() {
         // Clean up legacy properties and add default startDate
         if (state.goals) {
             state.goals.forEach(g => {
+                if (LEGACY_SUBJECT_NAMES[g.subject]) g.subject = LEGACY_SUBJECT_NAMES[g.subject];
                 if (!g.startDate) g.startDate = (g.deadline < getTodayStr()) ? g.deadline : getTodayStr();
                 delete g.priority;
                 delete g.allocationMode;
@@ -113,6 +125,7 @@ function loadData() {
         }
         if (state.tasks) {
             state.tasks.forEach(t => {
+                if (LEGACY_SUBJECT_NAMES[t.subject]) t.subject = LEGACY_SUBJECT_NAMES[t.subject];
                 if (t.priority !== undefined) {
                     delete t.priority;
                 }
@@ -717,6 +730,22 @@ function renderSettings() {
 }
 
 function renderGoals() {
+    const filterSelect = document.getElementById('goalFilterSubject');
+    const selectedFilter = filterSelect ? filterSelect.value : 'all';
+
+    // Populate filter dropdown
+    if (filterSelect) {
+        const uniqueSubjects = [...new Set(state.goals.map(g => g.subject))];
+        filterSelect.innerHTML = '<option value="all">모든 과목 보기</option>';
+        uniqueSubjects.forEach(sub => {
+            const opt = document.createElement('option');
+            opt.value = sub;
+            opt.textContent = sub;
+            if (sub === selectedFilter) opt.selected = true;
+            filterSelect.appendChild(opt);
+        });
+    }
+
     goalsTableBody.innerHTML = '';
     
     if (state.goals.length === 0) {
@@ -724,12 +753,19 @@ function renderGoals() {
         return;
     }
 
-    state.goals.forEach(goal => {
+    const filteredGoals = selectedFilter === 'all' ? state.goals : state.goals.filter(g => g.subject === selectedFilter);
+
+    if (filteredGoals.length === 0) {
+        goalsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">해당 과목의 목표가 없습니다.</td></tr>';
+        return;
+    }
+
+    filteredGoals.forEach(goal => {
         const tr = document.createElement('tr');
         const progressPercent = Math.min(100, Math.round((goal.completedUnits / goal.totalUnits) * 100));
         
         tr.innerHTML = `
-            <td><span style="color: ${SUBJECT_COLORS[goal.subject]}; font-weight: 600;">${SUBJECT_NAMES[goal.subject]}</span></td>
+            <td><span style="color: ${getSubjectColor(goal.subject)}; font-weight: 600;">${goal.subject}</span></td>
             <td style="font-weight: 600;">${goal.name}</td>
             <td>
                 <div style="font-size: 0.8rem; text-align: right;">${goal.completedUnits} / ${goal.totalUnits}${goal.unitString || '단위'} (${progressPercent}%)</div>
@@ -784,7 +820,7 @@ function renderTasks() {
                 <div class="task-header-left">
                     <div class="task-desc">${task.name}</div>
                     <div class="task-meta">
-                        <span style="color: ${SUBJECT_COLORS[task.subject]}"><i class="fa-solid fa-tag"></i> ${SUBJECT_NAMES[task.subject]}</span>
+                        <span style="color: ${getSubjectColor(task.subject)}"><i class="fa-solid fa-tag"></i> ${task.subject}</span>
 
                     </div>
                 </div>
@@ -1204,8 +1240,8 @@ function renderCalendar() {
             tasksForDay.forEach(t => {
                 const taskDiv = document.createElement('div');
                 taskDiv.className = 'calendar-task';
-                taskDiv.style.backgroundColor = SUBJECT_COLORS[t.subject] || '#999';
-                taskDiv.innerText = `${SUBJECT_NAMES[t.subject] || t.subject} ${t.units}${t.unitString || '단위'}`;
+                taskDiv.style.backgroundColor = getSubjectColor(t.subject);
+                taskDiv.innerText = `${t.subject} ${t.units}${t.unitString || '단위'}`;
                 cell.appendChild(taskDiv);
             });
         }
@@ -1219,6 +1255,7 @@ function openEditModal(goalId) {
     if (!goal) return;
     
     editGoalId.value = goal.id;
+    editGoalSubject.value = goal.subject;
     editGoalName.value = goal.name;
     editGoalStartDate.value = goal.startDate || getTodayStr();
     editGoalDeadline.value = goal.deadline;
@@ -1255,6 +1292,7 @@ function saveEditGoal() {
         return;
     }
     
+    goal.subject = editGoalSubject.value;
     goal.name = editGoalName.value;
     goal.startDate = startDateVal;
     goal.deadline = deadlineVal;
