@@ -179,7 +179,7 @@
                             </div>
                             <div class="form-group">
                                 <label for="goalMinsPerUnit">한 단위당 예상 소요 시간 (분)</label>
-                                <input type="number" id="goalMinsPerUnit" placeholder="예: 30 (1단위당 30분)" required min="1">
+                                <input type="number" id="goalMinsPerUnit" placeholder="예: 30 (1단위당 30분)" required min="0.1" step="any">
                             </div>
                             <div class="form-group" style="display: flex; gap: 10px;">
                                 <div style="flex: 1;">
@@ -318,7 +318,7 @@
                 </div>
                 <div class="form-group">
                     <label for="editGoalMinsPerUnit">한 단위당 예상 소요 시간 (분)</label>
-                    <input type="number" id="editGoalMinsPerUnit" required min="1">
+                    <input type="number" id="editGoalMinsPerUnit" required min="0.1" step="any">
                 </div>
                 <div class="form-group" style="margin-top: 20px;">
                     <button type="button" class="btn btn-danger w-100" onclick="closeEditModal()">취소</button>
