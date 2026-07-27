@@ -135,8 +135,6 @@ function setupEventListeners() {
         });
     }
     
-    const nextBtn = document.getElementById('nextMonthBtn');
-    if (nextBtn) {
     const advanceTasksBtn = document.getElementById('advanceTasksBtn');
     if (advanceTasksBtn) {
         advanceTasksBtn.addEventListener('click', () => {
