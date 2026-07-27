@@ -181,9 +181,15 @@
                                 <label for="goalMinsPerUnit">한 단위당 예상 소요 시간 (분)</label>
                                 <input type="number" id="goalMinsPerUnit" placeholder="예: 30 (1단위당 30분)" required min="1">
                             </div>
-                            <div class="form-group">
-                                <label for="goalDeadline">마감일</label>
-                                <input type="date" id="goalDeadline" required>
+                            <div class="form-group" style="display: flex; gap: 10px;">
+                                <div style="flex: 1;">
+                                    <label for="goalStartDate">시작일 (선택)</label>
+                                    <input type="date" id="goalStartDate">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label for="goalDeadline">마감일</label>
+                                    <input type="date" id="goalDeadline" required>
+                                </div>
                             </div>
 
                             <button type="submit" class="btn btn-primary w-100">목표 등록 및 자동 스케줄링</button>
@@ -200,8 +206,7 @@
                                         <th>과목</th>
                                         <th>목표명</th>
                                         <th>전체 진척도</th>
-                                        <th>마감일</th>
-
+                                        <th>기간</th>
                                         <th>관리</th>
                                     </tr>
                                 </thead>
@@ -293,9 +298,15 @@
                     <label for="editGoalName">목표명</label>
                     <input type="text" id="editGoalName" required>
                 </div>
-                <div class="form-group">
-                    <label for="editGoalDeadline">마감일</label>
-                    <input type="date" id="editGoalDeadline" required>
+                <div class="form-group" style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label for="editGoalStartDate">시작일 (선택)</label>
+                        <input type="date" id="editGoalStartDate">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="editGoalDeadline">마감일</label>
+                        <input type="date" id="editGoalDeadline" required>
+                    </div>
                 </div>
 
                 <div class="form-group">
