@@ -346,7 +346,7 @@ function addGoal() {
         subject: document.getElementById('goalSubject').value,
         name: document.getElementById('goalName').value,
         totalUnits: parseInt(document.getElementById('goalTotalUnits').value),
-        totalMins: parseInt(document.getElementById('goalTotalMins').value || (parseInt(document.getElementById('goalTotalUnits').value) * 10)),
+        minsPerUnit: parseInt(document.getElementById('goalMinsPerUnit').value || 10),
         unitString: goalUnitString.value || '단위',
         deadline: document.getElementById('goalDeadline').value,
         priority: parseInt(document.getElementById('goalPriority').value),
@@ -543,7 +543,7 @@ function distributeGoalsForToday(isForce = false) {
                 existingTask.name = existingTask.name.replace(/\(\d+.*\)/, `(${simTask.units}${uStr})`);
             }
             existingTask.unitString = uStr;
-            existingTask.minsPerUnit = goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10;
+            existingTask.minsPerUnit = goal.minsPerUnit || (goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10);
             newTasks.push(existingTask);
         } else {
             newTasks.push({
@@ -556,7 +556,7 @@ function distributeGoalsForToday(isForce = false) {
                 unitString: uStr,
                 subtasks: new Array(simTask.units).fill(false),
                 expanded: false,
-                minsPerUnit: goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10
+                minsPerUnit: goal.minsPerUnit || (goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10)
             });
         }
     });
@@ -900,7 +900,7 @@ function advanceTomorrowTasks() {
                 unitString: uStr,
                 subtasks: new Array(simTask.units).fill(false),
                 expanded: false,
-                minsPerUnit: goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10,
+                minsPerUnit: goal.minsPerUnit || (goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10),
                 advanceDays: advanceDaysTracker
             });
             addedCount++;
@@ -1178,6 +1178,7 @@ function openEditModal(goalId) {
     editGoalPriority.value = goal.priority;
     editGoalTotalUnits.value = goal.totalUnits;
     document.getElementById('editGoalUnitString').value = goal.unitString || '단위';
+    document.getElementById('editGoalMinsPerUnit').value = goal.minsPerUnit || (goal.totalMins ? Math.round(goal.totalMins / goal.totalUnits) : 10);
     editGoalTotalUnits.min = goal.completedUnits;
     
     editGoalModal.style.display = 'flex';
@@ -1204,6 +1205,7 @@ function saveEditGoal() {
     goal.priority = parseInt(editGoalPriority.value);
     goal.totalUnits = newTotal;
     goal.unitString = document.getElementById('editGoalUnitString').value || '단위';
+    goal.minsPerUnit = parseInt(document.getElementById('editGoalMinsPerUnit').value || 10);
     
     closeEditModal();
     forceRegenerateTasks();
