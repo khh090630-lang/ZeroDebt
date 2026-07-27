@@ -11,7 +11,7 @@ let state = {
         blackoutPeriods: [], // { start, end }
         notificationTimes: [] // ["09:00", "20:00"]
     },
-    goals: [], // { id, subject, name, totalUnits, unitTime, deadline, completedUnits }
+    goals: [], // { id, subject, name, totalUnits, unitTime, startDate, deadline, completedUnits }
     tasks: [], // Generated tasks for today { id, goalId, subject, name, units, duration, completed }
     history: {},
     lastGeneratedDate: null,
@@ -77,6 +77,7 @@ const editGoalModal = document.getElementById('editGoalModal');
 const editGoalForm = document.getElementById('editGoalForm');
 const editGoalId = document.getElementById('editGoalId');
 const editGoalName = document.getElementById('editGoalName');
+const editGoalStartDate = document.getElementById('editGoalStartDate');
 const editGoalDeadline = document.getElementById('editGoalDeadline');
 
 const editGoalTotalUnits = document.getElementById('editGoalTotalUnits');
@@ -102,9 +103,10 @@ function loadData() {
         state.perfectDays = state.perfectDays || 0;
         state.tier = state.tier || '브론즈 (Bronze)';
         
-        // Clean up legacy properties
+        // Clean up legacy properties and add default startDate
         if (state.goals) {
             state.goals.forEach(g => {
+                if (!g.startDate) g.startDate = (g.deadline < getTodayStr()) ? g.deadline : getTodayStr();
                 delete g.priority;
                 delete g.allocationMode;
             });
@@ -356,6 +358,18 @@ function isDateInPeriods(dateStr, periods) {
 }
 
 function addGoal() {
+    let startDateVal = document.getElementById('goalStartDate').value || getTodayStr();
+    let deadlineVal = document.getElementById('goalDeadline').value;
+    
+    if (startDateVal > deadlineVal) {
+        showToast('시작일은 마감일보다 늦을 수 없습니다.', 'warning');
+        return;
+    }
+    if (deadlineVal < getTodayStr()) {
+        showToast('마감일은 오늘 이후여야 합니다.', 'warning');
+        return;
+    }
+
     const newGoal = {
         id: 'g_' + Date.now(),
         subject: document.getElementById('goalSubject').value,
@@ -363,15 +377,11 @@ function addGoal() {
         totalUnits: parseInt(document.getElementById('goalTotalUnits').value),
         minsPerUnit: parseInt(document.getElementById('goalMinsPerUnit').value || 10),
         unitString: goalUnitString.value || '단위',
-        deadline: document.getElementById('goalDeadline').value,
+        startDate: startDateVal,
+        deadline: deadlineVal,
 
         completedUnits: 0
     };
-
-    if (newGoal.deadline < getTodayStr()) {
-        showToast('마감일은 오늘 이후여야 합니다.', 'warning');
-        return;
-    }
 
     state.goals.push(newGoal);
     saveData();
@@ -725,7 +735,11 @@ function renderGoals() {
                 <div style="font-size: 0.8rem; text-align: right;">${goal.completedUnits} / ${goal.totalUnits}${goal.unitString || '단위'} (${progressPercent}%)</div>
                 <div class="goal-progress-bar"><div class="goal-progress-fill" style="width: ${progressPercent}%"></div></div>
             </td>
-            <td>${goal.deadline}</td>
+            <td>
+                <div style="font-size: 0.85rem; color: #666; font-weight: 500;">
+                    ${goal.startDate || '시작일 미정'} <br>~ ${goal.deadline}
+                </div>
+            </td>
 
             <td>
                 <button class="btn btn-sm btn-primary" style="margin-right: 5px;" onclick="openEditModal('${goal.id}')"><i class="fa-solid fa-pen"></i></button>
@@ -1010,7 +1024,10 @@ function simulateSchedule(ignoreTodayState = false) {
         let remainingUnits = goal.totalUnits - goal.simCompleted; 
         if (remainingUnits <= 0) return;
         
-        let currentDate = new Date(simDate.toISOString().split('T')[0]);
+        let goalStartDateStr = goal.startDate || getTodayStr();
+        let simDateStr = simDate.toISOString().split('T')[0];
+        let startToUse = simDateStr > goalStartDateStr ? simDateStr : goalStartDateStr;
+        let currentDate = new Date(startToUse);
         let deadlineDate = new Date(goal.deadline);
         
         if (currentDate > deadlineDate) {
@@ -1059,7 +1076,7 @@ function simulateSchedule(ignoreTodayState = false) {
                 }
             });
             
-            let activeGoals = simGoals.filter(g => g.simCompleted < g.totalUnits);
+            let activeGoals = simGoals.filter(g => g.simCompleted < g.totalUnits && dStr >= (g.startDate || getTodayStr()));
             
             if (total_capacity > 0 && activeGoals.length > 0) {
                 let assignments = {};
@@ -1201,6 +1218,7 @@ function openEditModal(goalId) {
     
     editGoalId.value = goal.id;
     editGoalName.value = goal.name;
+    editGoalStartDate.value = goal.startDate || getTodayStr();
     editGoalDeadline.value = goal.deadline;
 
     editGoalTotalUnits.value = goal.totalUnits;
@@ -1227,8 +1245,17 @@ function saveEditGoal() {
         return;
     }
     
+    let startDateVal = editGoalStartDate.value || getTodayStr();
+    let deadlineVal = editGoalDeadline.value;
+    
+    if (startDateVal > deadlineVal) {
+        showToast('시작일은 마감일보다 늦을 수 없습니다.', 'warning');
+        return;
+    }
+    
     goal.name = editGoalName.value;
-    goal.deadline = editGoalDeadline.value;
+    goal.startDate = startDateVal;
+    goal.deadline = deadlineVal;
 
     goal.totalUnits = newTotal;
     goal.unitString = document.getElementById('editGoalUnitString').value || '단위';
