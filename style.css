@@ -564,13 +564,15 @@ header {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+    min-width: 0;
 }
 .task-progress-container {
-    width: 120px;
+    width: 140px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-right: 15px;
+    gap: 8px;
+    margin-right: 0px;
 }
 .task-progress-bar {
     flex-grow: 1;
@@ -589,6 +591,7 @@ header {
     font-weight: 600;
     color: #666;
     min-width: 35px;
+    text-align: right;
 }
 .toggle-subtasks-btn {
     background: none;
