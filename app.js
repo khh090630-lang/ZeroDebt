@@ -400,13 +400,13 @@ function checkAndGenerateTasks() {
                 state.perfectDays++;
                 state.streak++;
                 state.lastCompletedDate = state.lastGeneratedDate;
+                
+                // Amnesty Rule for Iron (Reset negative exp to 0 upon perfect day)
+                if (state.exp < 0) {
+                    state.exp = 0;
+                }
             } else {
                 state.streak = 0;
-            }
-            
-            // Amnesty Rule for 0%
-            if (state.exp < 0) {
-                state.exp = -Math.abs(state.exp); // Allow negative for Iron
             }
             
             checkTierPromotion(true);
@@ -1231,5 +1231,12 @@ function switchTab(tabId) {
     document.querySelector(`.nav-btn[onclick="switchTab('${tabId}')"]`).classList.add('active');
 }
 window.switchTab = switchTab;
+window.resetAppData = function() {
+    if (confirm("정말로 모든 앱 데이터(목표, 경험치, 기록 등)를 0으로 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) {
+        localStorage.removeItem('zeroDebtData_v2');
+        alert("모든 데이터가 초기화되었습니다. 페이지를 새로고침합니다.");
+        location.reload();
+    }
+}
 
 init();
