@@ -97,6 +97,34 @@ function init() {
     loadData();
     setupEventListeners();
     
+    // One-time EXP restore due to sync bug
+    if (state.exp < 0) {
+        state.exp = 400;
+        saveDataLocalOnly();
+    }
+    
+    const todayStr = getTodayStr();
+    
+    // Auto-sync if we are on a new day to prevent stale penalties
+    if (state.lastGeneratedDate && state.lastGeneratedDate !== todayStr && state.goals.length > 0) {
+        document.body.style.opacity = '0.5'; // Loading state
+        fetch(SYNC_URL + '?action=load')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success' && data.data) {
+                    state = data.data;
+                    saveDataLocalOnly();
+                }
+            })
+            .catch(err => console.error(err))
+            .finally(() => {
+                document.body.style.opacity = '1';
+                checkAndGenerateTasks();
+                renderAll();
+            });
+        return; // Wait for fetch to finish
+    }
+    
     // Auto-fetch from cloud if local state is completely empty
     if (state.goals.length === 0) {
         fetchDataFromCloud();
@@ -1437,7 +1465,6 @@ window.resetAppData = function() {
 init();
 
 // Edit Modal Event Listeners
-const editGoalModal = document.getElementById('editGoalModal');
 window.openEditModal = function(goalId) {
     const goal = state.goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -1451,11 +1478,11 @@ window.openEditModal = function(goalId) {
     document.getElementById('editGoalUnitString').value = goal.unitString;
     document.getElementById('editGoalUnitTime').value = goal.unitTime;
     
-    editGoalModal.style.display = 'flex';
+    if (editGoalModal) editGoalModal.style.display = 'flex';
 };
 
 window.closeEditModal = function() {
-    editGoalModal.style.display = 'none';
+    if (editGoalModal) editGoalModal.style.display = 'none';
 };
 
 // Tier Info Modal Logic
@@ -1481,10 +1508,6 @@ window.closeTierInfoModal = function() {
 };
 
 window.onclick = function(event) {
-    const addGoalModal = document.getElementById('addGoalModal');
-    if (event.target == addGoalModal) {
-        closeAddModal();
-    }
     if (event.target == editGoalModal) {
         closeEditModal();
     }
