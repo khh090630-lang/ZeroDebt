@@ -254,8 +254,10 @@ function setupEventListeners() {
         });
     }
     // Sync
-    syncBtn.addEventListener('click', () => {
-        fetchDataFromCloud();
+    syncBtn.addEventListener('click', async () => {
+        // Push local state first, then pull
+        await syncDataToCloud();
+        fetchDataFromCloud(true);
     });
 }
 
@@ -264,9 +266,10 @@ async function syncDataToCloud() {
     if (!SYNC_URL) return;
     
     try {
-        fetch(SYNC_URL, {
+        await fetch(SYNC_URL, {
             method: 'POST',
             mode: 'no-cors',
+            keepalive: true,
             body: JSON.stringify(state),
             headers: { 'Content-Type': 'text/plain;charset=utf-8' }
         });
