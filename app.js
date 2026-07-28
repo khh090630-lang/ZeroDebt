@@ -1442,6 +1442,40 @@ window.closeEditModal = closeEditModal;
 window.removePeriod = removePeriod;
 window.removeGoal = removeGoal;
 
+// Tier Info Popup Logic
+window.toggleTierPopup = function(event) {
+    event.stopPropagation();
+    const popup = document.getElementById('tierInfoPopup');
+    const tbody = document.getElementById('tierInfoTableBody');
+    
+    if (popup.style.display === 'block') {
+        popup.style.display = 'none';
+        return;
+    }
+    
+    if (tbody) {
+        tbody.innerHTML = '';
+        TIERS.forEach(tier => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td style="padding: 5px 0; font-weight: 600; color: #3b82f6;">${tier.name}</td>
+                <td>${tier.reqExp}</td>
+                <td>${tier.reqPerfect}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    popup.style.display = 'block';
+};
+
+// Close popup when clicking outside
+document.addEventListener('click', function(event) {
+    const popup = document.getElementById('tierInfoPopup');
+    if (popup && popup.style.display === 'block' && !event.target.closest('#tierInfoPopup') && !event.target.closest('.fa-circle-info')) {
+        popup.style.display = 'none';
+    }
+});
+
 function switchTab(tabId) {
     document.querySelectorAll('.tab-pane').forEach(pane => {
         pane.classList.remove('active');
