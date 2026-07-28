@@ -89,13 +89,33 @@
                             <i class="fa-solid fa-fire" style="color: #f59e0b;"></i> 연속 <span id="streakCount">0</span>일 완수 중!
                         </div>
                         
-                        <div id="tierWidget" class="tier-widget" style="text-align: center; padding: 10px 0;">
-                            <div id="tierIconContainer" style="font-size: 3.5rem; margin-bottom: 10px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">🥉</div>
-                            <h3 style="margin: 0; color: var(--primary-color); font-weight: 700; display: flex; justify-content: center; align-items: center;">
-                                <span id="tierName">브론즈 (Bronze)</span>
-                                <i class="fa-solid fa-circle-info" style="font-size: 1rem; color: #94a3b8; cursor: pointer; margin-left: 8px;" onclick="openTierInfoModal()"></i>
-                            </h3>
-                            <p id="tierNextReq" style="font-size: 0.9rem; color: #64748b; margin-top: 5px;">다음 티어: 300 EXP, 3일 완수 필요</p>
+                        <div id="tierWidget" class="tier-widget" style="text-align: center; padding: 10px 0; position: relative;">
+            <div id="tierIconContainer" style="font-size: 3.5rem; margin-bottom: 10px; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));">🥉</div>
+            <h3 style="margin: 0; color: var(--primary-color); font-weight: 700; display: flex; justify-content: center; align-items: center; position: relative;">
+                <span id="tierName">브론즈 (Bronze)</span>
+                <i class="fa-solid fa-circle-info" style="font-size: 1rem; color: #94a3b8; cursor: pointer; margin-left: 8px;" onclick="toggleTierPopup(event)"></i>
+                
+                <!-- Tier Info Popup -->
+                <div id="tierInfoPopup" style="display: none; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 10px; width: 300px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000; padding: 15px; border: 1px solid rgba(0,0,0,0.05); font-family: 'Inter', sans-serif;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px;">
+                        <h4 style="margin: 0; font-size: 1rem; color: #1e293b;"><i class="fa-solid fa-ranking-star"></i> 티어 달성 기준</h4>
+                        <i class="fa-solid fa-xmark" style="cursor: pointer; color: #94a3b8;" onclick="document.getElementById('tierInfoPopup').style.display='none'"></i>
+                    </div>
+                    <table style="width: 100%; text-align: left; font-size: 0.8rem; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #e2e8f0; color: #64748b;">
+                                <th style="padding: 5px 0;">티어</th>
+                                <th>필요 EXP</th>
+                                <th>필요 완수일</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tierInfoTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </h3>
+            <p id="tierNextReq" style="font-size: 0.9rem; color: #64748b; margin-top: 5px;">다음 티어: 300 EXP, 3일 완수 필요</p>
                             
                             <div class="progress-container" style="margin-top: 20px;">
                                 <div class="progress-labels" style="font-size: 0.85rem; font-weight: 600;">
@@ -341,30 +361,6 @@
         </div>
     </div>
 
-    <!-- Tier Info Modal -->
-    <div id="tierInfoModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2><i class="fa-solid fa-ranking-star"></i> 티어 달성 기준</h2>
-                <span class="close-modal" onclick="closeTierInfoModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">티어를 올리기 위해서는 명시된 <strong>누적 EXP</strong>와 <strong>연속 완수일(Perfect Days)</strong> 두 가지 조건을 모두 충족해야 합니다.</p>
-                <table class="goals-table" style="font-size: 0.9rem;">
-                    <thead>
-                        <tr>
-                            <th>티어</th>
-                            <th>필요 EXP</th>
-                            <th>필요 완수일</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tierInfoTableBody">
-                        <!-- Populated by JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
     <div id="toastContainer" class="toast-container"></div>
     <div id="confetti" class="confetti-container"></div>
     <div id="promotionOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.85); flex-direction: column; justify-content: center; align-items: center; text-align: center; backdrop-filter: blur(5px);">
