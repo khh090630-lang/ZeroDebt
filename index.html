@@ -339,32 +339,32 @@
                 </div>
             </form>
         </div>
-        <!-- Tier Info Modal -->
-        <div id="tierInfoModal" class="modal">
-            <div class="modal-content" style="max-width: 500px;">
-                <div class="modal-header">
-                    <h2><i class="fa-solid fa-ranking-star"></i> 티어 달성 기준</h2>
-                    <span class="close-modal" onclick="closeTierInfoModal()">&times;</span>
-                </div>
-                <div class="modal-body">
-                    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">티어를 올리기 위해서는 명시된 <strong>누적 EXP</strong>와 <strong>연속 완수일(Perfect Days)</strong> 두 가지 조건을 모두 충족해야 합니다.</p>
-                    <table class="goals-table" style="font-size: 0.9rem;">
-                        <thead>
-                            <tr>
-                                <th>티어</th>
-                                <th>필요 EXP</th>
-                                <th>필요 완수일</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tierInfoTableBody">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
-                </div>
+    </div>
+
+    <!-- Tier Info Modal -->
+    <div id="tierInfoModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-ranking-star"></i> 티어 달성 기준</h2>
+                <span class="close-modal" onclick="closeTierInfoModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 15px;">티어를 올리기 위해서는 명시된 <strong>누적 EXP</strong>와 <strong>연속 완수일(Perfect Days)</strong> 두 가지 조건을 모두 충족해야 합니다.</p>
+                <table class="goals-table" style="font-size: 0.9rem;">
+                    <thead>
+                        <tr>
+                            <th>티어</th>
+                            <th>필요 EXP</th>
+                            <th>필요 완수일</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tierInfoTableBody">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-
     <div id="toastContainer" class="toast-container"></div>
     <div id="confetti" class="confetti-container"></div>
     <div id="promotionOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; background: rgba(0,0,0,0.85); flex-direction: column; justify-content: center; align-items: center; text-align: center; backdrop-filter: blur(5px);">
