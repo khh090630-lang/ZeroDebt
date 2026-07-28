@@ -1464,26 +1464,7 @@ window.resetAppData = function() {
 
 init();
 
-// Edit Modal Event Listeners
-window.openEditModal = function(goalId) {
-    const goal = state.goals.find(g => g.id === goalId);
-    if (!goal) return;
-    
-    document.getElementById('editGoalId').value = goal.id;
-    document.getElementById('editGoalSubject').value = goal.subject;
-    document.getElementById('editGoalName').value = goal.name;
-    document.getElementById('editGoalStartDate').value = goal.startDate || getTodayStr();
-    document.getElementById('editGoalDeadline').value = goal.deadline;
-    document.getElementById('editGoalTotalUnits').value = goal.totalUnits;
-    document.getElementById('editGoalUnitString').value = goal.unitString;
-    document.getElementById('editGoalUnitTime').value = goal.unitTime;
-    
-    if (editGoalModal) editGoalModal.style.display = 'flex';
-};
 
-window.closeEditModal = function() {
-    if (editGoalModal) editGoalModal.style.display = 'none';
-};
 
 // Tier Info Modal Logic
 const tierInfoModal = document.getElementById('tierInfoModal');
