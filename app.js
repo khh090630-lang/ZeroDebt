@@ -35,14 +35,14 @@ let state = {
 const TIERS = [
     { name: '아이언 (Iron)', icon: '⛓️', minExp: -Infinity, minDays: 0, color: '#475569' },
     { name: '브론즈 (Bronze)', icon: '🥉', minExp: 0, minDays: 0, color: '#b45309' },
-    { name: '실버 (Silver)', icon: '🥈', minExp: 500, minDays: 3, color: '#94a3b8' },
-    { name: '골드 (Gold)', icon: '🥇', minExp: 1500, minDays: 7, color: '#facc15' },
-    { name: '플래티넘 (Platinum)', icon: '💠', minExp: 3000, minDays: 15, color: '#2dd4bf' },
-    { name: '에메랄드 (Emerald)', icon: '❇️', minExp: 5000, minDays: 30, color: '#10b981' },
-    { name: '다이아몬드 (Diamond)', icon: '💎', minExp: 7500, minDays: 50, color: '#3b82f6' },
-    { name: '마스터 (Master)', icon: '🔮', minExp: 10000, minDays: 75, color: '#8b5cf6' },
-    { name: '그랜드마스터 (GM)', icon: '👑', minExp: 15000, minDays: 100, color: '#ef4444' },
-    { name: '챌린저 (Challenger)', icon: '🏆', minExp: 20000, minDays: 150, color: '#f59e0b' }
+    { name: '실버 (Silver)', icon: '🥈', minExp: 1200, minDays: 3, color: '#94a3b8' },
+    { name: '골드 (Gold)', icon: '🥇', minExp: 2800, minDays: 7, color: '#facc15' },
+    { name: '플래티넘 (Platinum)', icon: '💠', minExp: 6000, minDays: 15, color: '#2dd4bf' },
+    { name: '에메랄드 (Emerald)', icon: '❇️', minExp: 12000, minDays: 30, color: '#10b981' },
+    { name: '다이아몬드 (Diamond)', icon: '💎', minExp: 20000, minDays: 50, color: '#3b82f6' },
+    { name: '마스터 (Master)', icon: '🔮', minExp: 30000, minDays: 75, color: '#8b5cf6' },
+    { name: '그랜드마스터 (GM)', icon: '👑', minExp: 40000, minDays: 100, color: '#ef4444' },
+    { name: '챌린저 (Challenger)', icon: '🏆', minExp: 60000, minDays: 150, color: '#f59e0b' }
 ];
 
 let advanceDaysTracker = 0;
@@ -672,6 +672,37 @@ window.toggleSubtask = function(taskId, idx) {
     checkStreak();
 };
 
+window.toggleAllSubtasks = function(taskId) {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    const goal = state.goals.find(g => g.id === task.goalId);
+    const allChecked = task.subtasks.every(Boolean);
+    const targetState = !allChecked;
+    const todayStr = getTodayStr();
+
+    if (!state.history) state.history = {};
+    if (!state.history[todayStr]) state.history[todayStr] = {};
+
+    task.subtasks.forEach((isChecked, idx) => {
+        if (isChecked !== targetState) {
+            task.subtasks[idx] = targetState;
+            if (goal) {
+                goal.completedUnits += targetState ? 1 : -1;
+                if (!state.history[todayStr][goal.subject]) state.history[todayStr][goal.subject] = 0;
+                state.history[todayStr][goal.subject] += targetState ? 1 : -1;
+                if (state.history[todayStr][goal.subject] <= 0) {
+                    delete state.history[todayStr][goal.subject];
+                }
+            }
+        }
+    });
+
+    saveData();
+    renderAll();
+    checkStreak();
+};
+
 function checkStreak() {
     if (state.tasks.length > 0) {
         const allDone = state.tasks.every(t => t.subtasks && t.subtasks.every(Boolean));
@@ -733,7 +764,6 @@ function renderGoals() {
     const filterSelect = document.getElementById('goalFilterSubject');
     const selectedFilter = filterSelect ? filterSelect.value : 'all';
 
-    // Populate filter dropdown
     if (filterSelect) {
         const uniqueSubjects = [...new Set(state.goals.map(g => g.subject))];
         filterSelect.innerHTML = '<option value="all">모든 과목 보기</option>';
@@ -749,40 +779,84 @@ function renderGoals() {
     goalsTableBody.innerHTML = '';
     
     if (state.goals.length === 0) {
-        goalsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">등록된 목표가 없습니다.</td></tr>';
+        goalsTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">등록된 목표가 없습니다.</td></tr>';
         return;
     }
 
     const filteredGoals = selectedFilter === 'all' ? state.goals : state.goals.filter(g => g.subject === selectedFilter);
 
     if (filteredGoals.length === 0) {
-        goalsTableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#888;">해당 과목의 목표가 없습니다.</td></tr>';
+        goalsTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#888;">해당 과목의 목표가 없습니다.</td></tr>';
         return;
     }
 
+    const groupedGoals = {};
     filteredGoals.forEach(goal => {
-        const tr = document.createElement('tr');
-        const progressPercent = Math.min(100, Math.round((goal.completedUnits / goal.totalUnits) * 100));
+        if (!groupedGoals[goal.subject]) groupedGoals[goal.subject] = [];
+        groupedGoals[goal.subject].push(goal);
+    });
+
+    Object.keys(groupedGoals).forEach(subject => {
+        const subjectColor = getSubjectColor(subject);
         
-        tr.innerHTML = `
-            <td><span style="color: ${getSubjectColor(goal.subject)}; font-weight: 600;">${goal.subject}</span></td>
-            <td style="font-weight: 600;">${goal.name}</td>
-            <td>
-                <div style="font-size: 0.8rem; text-align: right;">${goal.completedUnits} / ${goal.totalUnits}${goal.unitString || '단위'} (${progressPercent}%)</div>
-                <div class="goal-progress-bar"><div class="goal-progress-fill" style="width: ${progressPercent}%"></div></div>
-            </td>
-            <td>
-                <div style="font-size: 0.85rem; color: #666; font-weight: 500;">
-                    ${goal.startDate || '시작일 미정'} <br>~ ${goal.deadline}
+        // Render Group Header
+        const headerTr = document.createElement('tr');
+        headerTr.className = 'subject-goal-header';
+        headerTr.style.backgroundColor = '#f1f5f9';
+        headerTr.style.cursor = 'pointer';
+        headerTr.onclick = function() {
+            const icon = this.querySelector('i.fa-chevron-down');
+            const isOpen = icon.parentElement.classList.contains('open');
+            if (isOpen) {
+                icon.parentElement.classList.remove('open');
+            } else {
+                icon.parentElement.classList.add('open');
+            }
+            
+            let nextTr = this.nextElementSibling;
+            while(nextTr && nextTr.classList.contains('subject-goal-content')) {
+                nextTr.style.display = isOpen ? 'none' : 'table-row';
+                nextTr = nextTr.nextElementSibling;
+            }
+        };
+        headerTr.innerHTML = `
+            <td colspan="5" style="padding: 10px 15px; border-left: 4px solid ${subjectColor};">
+                <div style="display: flex; justify-content: space-between; align-items: center;" class="open">
+                    <div style="font-weight: 700; color: #334155;">
+                        <i class="fa-solid fa-tag" style="color: ${subjectColor}"></i> ${subject}
+                    </div>
+                    <button class="toggle-subject-btn open" style="background:none; border:none; color:#64748b; font-size:1.1rem; pointer-events:none;"><i class="fa-solid fa-chevron-down" style="transition: transform 0.3s;"></i></button>
                 </div>
             </td>
-
-            <td>
-                <button class="btn btn-sm btn-primary" style="margin-right: 5px;" onclick="openEditModal('${goal.id}')"><i class="fa-solid fa-pen"></i></button>
-                <button class="btn btn-sm btn-danger" onclick="removeGoal('${goal.id}')"><i class="fa-solid fa-trash"></i></button>
-            </td>
         `;
-        goalsTableBody.appendChild(tr);
+        goalsTableBody.appendChild(headerTr);
+
+        // Render Goals
+        groupedGoals[subject].forEach(goal => {
+            const tr = document.createElement('tr');
+            tr.className = 'subject-goal-content';
+            tr.style.display = 'table-row';
+            const progressPercent = Math.min(100, Math.round((goal.completedUnits / goal.totalUnits) * 100));
+            
+            tr.innerHTML = `
+                <td><span style="color: ${subjectColor}; font-weight: 600;">${goal.subject}</span></td>
+                <td style="font-weight: 600;">${goal.name}</td>
+                <td>
+                    <div style="font-size: 0.8rem; text-align: right;">${goal.completedUnits} / ${goal.totalUnits}${goal.unitString || '단위'} (${progressPercent}%)</div>
+                    <div class="goal-progress-bar"><div class="goal-progress-fill" style="width: ${progressPercent}%"></div></div>
+                </td>
+                <td>
+                    <div style="font-size: 0.85rem; color: #666; font-weight: 500;">
+                        ${goal.startDate || '시작일 미정'} <br>~ ${goal.deadline}
+                    </div>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" style="margin-right: 5px; padding: 4px 8px; font-size: 0.8rem;" onclick="openEditModal('${goal.id}')"><i class="fa-solid fa-pen"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="removeGoal('${goal.id}')"><i class="fa-solid fa-trash"></i></button>
+                </td>
+            `;
+            goalsTableBody.appendChild(tr);
+        });
     });
 }
 
@@ -794,47 +868,74 @@ function renderTasks() {
         return;
     }
 
+    const groupedTasks = {};
     state.tasks.forEach(task => {
-        if (task.completed !== undefined) {
-             task.subtasks = new Array(task.units).fill(task.completed);
-             delete task.completed;
-        }
-        if (task.expanded === undefined) task.expanded = false;
+        if (!groupedTasks[task.subject]) groupedTasks[task.subject] = [];
+        groupedTasks[task.subject].push(task);
+    });
 
-        const checkedCount = task.subtasks.filter(Boolean).length;
-        const allDone = checkedCount === task.units;
-        const progressPercent = Math.round((checkedCount / task.units) * 100) || 0;
-
-        const li = document.createElement('li');
-        li.className = `task-item subject-${task.subject} ${allDone ? 'completed' : ''}`;
+    Object.keys(groupedTasks).forEach(subject => {
+        const subjectColor = getSubjectColor(subject);
         
-        let subtasksHtml = task.subtasks.map((isChecked, idx) => `
-            <li class="subtask-item ${isChecked ? 'completed' : ''}">
-                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSubtask('${task.id}', ${idx})">
-                ${idx + 1} ${task.unitString || '단위'}
-            </li>
-        `).join('');
+        const groupContainer = document.createElement('div');
+        groupContainer.className = 'subject-group';
+        
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'subject-group-header open';
+        groupHeader.style.borderLeft = `4px solid ${subjectColor}`;
+        groupHeader.innerHTML = `
+            <div style="font-weight: 700; color: #334155;">
+                <i class="fa-solid fa-tag" style="color: ${subjectColor}"></i> ${subject}
+            </div>
+            <button class="toggle-subject-btn open" onclick="this.parentElement.nextElementSibling.classList.toggle('open'); this.classList.toggle('open');"><i class="fa-solid fa-chevron-down"></i></button>
+        `;
+        
+        const groupContent = document.createElement('ul');
+        groupContent.className = 'subject-group-content open';
+        
+        groupedTasks[subject].forEach(task => {
+            if (task.completed !== undefined) {
+                 task.subtasks = new Array(task.units).fill(task.completed);
+                 delete task.completed;
+            }
+            if (task.expanded === undefined) task.expanded = false;
 
-        li.innerHTML = `
-            <div class="task-header">
-                <div class="task-header-left">
-                    <div class="task-desc">${task.name}</div>
-                    <div class="task-meta">
-                        <span style="color: ${getSubjectColor(task.subject)}"><i class="fa-solid fa-tag"></i> ${task.subject}</span>
+            const checkedCount = task.subtasks.filter(Boolean).length;
+            const allDone = checkedCount === task.units;
+            const progressPercent = Math.round((checkedCount / task.units) * 100) || 0;
 
+            const li = document.createElement('li');
+            li.className = `task-item subject-${task.subject} ${allDone ? 'completed' : ''}`;
+            
+            let subtasksHtml = task.subtasks.map((isChecked, idx) => `
+                <li class="subtask-item ${isChecked ? 'completed' : ''}">
+                    <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSubtask('${task.id}', ${idx})">
+                    ${idx + 1} ${task.unitString || '단위'}
+                </li>
+            `).join('');
+
+            li.innerHTML = `
+                <div class="task-header">
+                    <div class="task-header-left">
+                        <div class="task-desc">${task.name}</div>
+                    </div>
+                    <div class="task-progress-container">
+                        <div class="task-progress-bar"><div class="task-progress-fill" style="width: ${progressPercent}%"></div></div>
+                        <div class="task-progress-text" style="white-space:nowrap;">${checkedCount}/${task.units}${task.unitString || '단위'}</div>
+                        <button class="btn btn-sm btn-outline-primary" style="margin-right:5px; padding:2px 6px; font-size:0.75rem;" onclick="toggleAllSubtasks('${task.id}')">전체완수</button>
+                        <button class="toggle-subtasks-btn ${task.expanded ? 'open' : ''}" onclick="toggleExpandTask('${task.id}')"><i class="fa-solid fa-chevron-down"></i></button>
                     </div>
                 </div>
-                <div class="task-progress-container">
-                    <div class="task-progress-bar"><div class="task-progress-fill" style="width: ${progressPercent}%"></div></div>
-                    <div class="task-progress-text">${checkedCount}/${task.units}${task.unitString || '단위'}</div>
-                    <button class="toggle-subtasks-btn ${task.expanded ? 'open' : ''}" onclick="toggleExpandTask('${task.id}')"><i class="fa-solid fa-chevron-down"></i></button>
-                </div>
-            </div>
-            <ul class="subtasks-list ${task.expanded ? 'open' : ''}">
-                ${subtasksHtml}
-            </ul>
-        `;
-        taskList.appendChild(li);
+                <ul class="subtasks-list ${task.expanded ? 'open' : ''}">
+                    ${subtasksHtml}
+                </ul>
+            `;
+            groupContent.appendChild(li);
+        });
+        
+        groupContainer.appendChild(groupHeader);
+        groupContainer.appendChild(groupContent);
+        taskList.appendChild(groupContainer);
     });
 }
 
@@ -1334,3 +1435,60 @@ window.resetAppData = function() {
 }
 
 init();
+
+// Edit Modal Event Listeners
+const editGoalModal = document.getElementById('editGoalModal');
+window.openEditModal = function(goalId) {
+    const goal = state.goals.find(g => g.id === goalId);
+    if (!goal) return;
+    
+    document.getElementById('editGoalId').value = goal.id;
+    document.getElementById('editGoalSubject').value = goal.subject;
+    document.getElementById('editGoalName').value = goal.name;
+    document.getElementById('editGoalStartDate').value = goal.startDate || getTodayStr();
+    document.getElementById('editGoalDeadline').value = goal.deadline;
+    document.getElementById('editGoalTotalUnits').value = goal.totalUnits;
+    document.getElementById('editGoalUnitString').value = goal.unitString;
+    document.getElementById('editGoalUnitTime').value = goal.unitTime;
+    
+    editGoalModal.style.display = 'flex';
+};
+
+window.closeEditModal = function() {
+    editGoalModal.style.display = 'none';
+};
+
+// Tier Info Modal Logic
+const tierInfoModal = document.getElementById('tierInfoModal');
+window.openTierInfoModal = function() {
+    const tbody = document.getElementById('tierInfoTableBody');
+    if (tbody) {
+        tbody.innerHTML = '';
+        TIERS.forEach(tier => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><span style="color: ${tier.color}; font-weight: bold;">${tier.icon} ${tier.name}</span></td>
+                <td style="text-align:right;">${tier.minExp === -Infinity ? '0' : tier.minExp.toLocaleString()}</td>
+                <td style="text-align:right;">${tier.minDays}일</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    if (tierInfoModal) tierInfoModal.style.display = 'flex';
+};
+window.closeTierInfoModal = function() {
+    if (tierInfoModal) tierInfoModal.style.display = 'none';
+};
+
+window.onclick = function(event) {
+    const addGoalModal = document.getElementById('addGoalModal');
+    if (event.target == addGoalModal) {
+        closeAddModal();
+    }
+    if (event.target == editGoalModal) {
+        closeEditModal();
+    }
+    if (event.target == tierInfoModal) {
+        closeTierInfoModal();
+    }
+};
