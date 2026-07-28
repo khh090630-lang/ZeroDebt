@@ -953,7 +953,7 @@ function renderTasks() {
                     <div class="task-progress-container">
                         <div class="task-progress-bar"><div class="task-progress-fill" style="width: ${progressPercent}%"></div></div>
                         <div class="task-progress-text" style="white-space:nowrap;">${checkedCount}/${task.units}${task.unitString || '단위'}</div>
-                        <button class="btn btn-sm btn-outline-primary" style="margin-right:5px; padding:2px 6px; font-size:0.75rem;" onclick="toggleAllSubtasks('${task.id}')">전체완수</button>
+                        <button class="btn btn-sm btn-outline-primary" style="margin-right:5px; padding:2px 6px; font-size:0.75rem;" onclick="toggleAllSubtasks('${task.id}')" title="전체완수"><i class="fa-solid fa-check-double"></i></button>
                         <button class="toggle-subtasks-btn ${task.expanded ? 'open' : ''}" onclick="toggleExpandTask('${task.id}')"><i class="fa-solid fa-chevron-down"></i></button>
                     </div>
                 </div>
