@@ -125,9 +125,9 @@ function init() {
         return; // Wait for fetch to finish
     }
     
-    // Auto-fetch from cloud if local state is completely empty
-    if (state.goals.length === 0) {
-        fetchDataFromCloud();
+    // Auto-fetch from cloud silently in background to sync multiple devices on same day
+    if (state.goals.length > 0) {
+        fetchDataFromCloud(false);
     }
     
     checkAndGenerateTasks();
@@ -1458,9 +1458,9 @@ window.toggleTierPopup = function(event) {
         TIERS.forEach(tier => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="padding: 5px 0; font-weight: 600; color: #3b82f6;">${tier.name}</td>
-                <td>${tier.reqExp}</td>
-                <td>${tier.reqPerfect}</td>
+                <td style="padding: 5px 0; font-weight: 600; color: ${tier.color};">${tier.name}</td>
+                <td>${tier.minExp === -Infinity ? 0 : tier.minExp}</td>
+                <td>${tier.minDays}</td>
             `;
             tbody.appendChild(tr);
         });
