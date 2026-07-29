@@ -607,7 +607,7 @@ function distributeGoalsForToday(isForce = false) {
     let oldTasks = (state.lastGeneratedDate === todayStr || isForce) ? [...state.tasks] : [];
     
     // Run simulation to get globally optimal quotas for today
-    const { schedule } = simulateSchedule(true); 
+    const { schedule } = simulateSchedule(true, oldTasks); 
     
     let todaySimTasks = schedule[todayStr] || [];
     let newTasks = [];
@@ -1254,7 +1254,7 @@ function fireConfetti() {
     }
 }
 
-function simulateSchedule(ignoreTodayState = false) {
+function simulateSchedule(ignoreTodayState = false, oldTasks = []) {
     const todayStr = getTodayStr();
     let simDate = new Date(todayStr);
     
@@ -1267,8 +1267,9 @@ function simulateSchedule(ignoreTodayState = false) {
     const schedule = {};
     let simGoals = state.goals.map(g => {
         let completedToday = 0;
-        if (state.history && state.history[todayStr] && state.history[todayStr].completed) {
-            completedToday = state.history[todayStr].completed.filter(c => c.goalId === g.id).length;
+        let oldTask = oldTasks.find(t => t.goalId === g.id);
+        if (oldTask) {
+            completedToday = oldTask.subtasks ? oldTask.subtasks.filter(Boolean).length : (oldTask.completed || 0);
         }
         return {
             ...g,
