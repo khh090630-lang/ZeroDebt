@@ -35,7 +35,10 @@
     <div class="app-container">
         <header>
             <div class="header-content">
-                <h1><i class="fa-solid fa-layer-group"></i> ZeroDebt</h1>
+                <h1 style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fa-solid fa-layer-group"></i> ZeroDebt
+                    <span id="userLevelBadge" style="font-size: 0.9rem; background: #3b82f6; color: white; padding: 2px 8px; border-radius: 12px; font-weight: 600;">Lv.1</span>
+                </h1>
                 <p>스마트 학습 스케줄러</p>
             </div>
             <div class="header-actions">
@@ -105,8 +108,10 @@
                         <thead>
                             <tr style="border-bottom: 1px solid #e2e8f0; color: #64748b;">
                                 <th style="padding: 5px 0;">티어</th>
-                                <th>필요 EXP</th>
-                                <th>필요 완수일</th>
+                                <th>EXP</th>
+                                <th>완수</th>
+                                <th>Lv</th>
+                                <th>연속(승급시)</th>
                             </tr>
                         </thead>
                         <tbody id="tierInfoTableBody">
