@@ -1498,15 +1498,15 @@ window.toggleTierPopup = function(event) {
         TIERS.forEach((tier, index) => {
             const tr = document.createElement('tr');
             let prevTier = index > 0 ? TIERS[index - 1] : tier;
-            let reqExp = index === 0 ? 0 : tier.minExp - prevTier.minExp;
-            let reqDays = index === 0 ? 0 : tier.minDays - prevTier.minDays;
+            let reqExp = index <= 1 ? '-' : '+' + (tier.minExp - prevTier.minExp);
+            let reqDays = index <= 1 ? '-' : '+' + (tier.minDays - prevTier.minDays);
             
             tr.innerHTML = `
                 <td style="padding: 5px 0; font-weight: 600; color: ${tier.color};">${tier.name}</td>
-                <td>+${reqExp}</td>
-                <td>+${reqDays}</td>
-                <td>Lv.${tier.minLevel}</td>
-                <td>${tier.minStreak > 0 ? tier.minStreak + '회' : '-'}</td>
+                <td style="text-align: right;">${reqExp}</td>
+                <td style="text-align: right;">${reqDays}</td>
+                <td style="text-align: center;">Lv.${tier.minLevel}</td>
+                <td style="text-align: right;">${tier.minStreak > 0 ? tier.minStreak + '회' : '-'}</td>
             `;
             tbody.appendChild(tr);
         });
