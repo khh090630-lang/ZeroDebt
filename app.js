@@ -217,6 +217,7 @@ function setupEventListeners() {
         cb.addEventListener('change', updateSettings);
     });
     availMultiplierInput.addEventListener('change', updateSettings);
+    document.getElementById('dayResetHour').addEventListener('change', updateSettings);
     
     addAvailPeriodBtn.addEventListener('click', () => addPeriod('avail'));
     addBlackoutPeriodBtn.addEventListener('click', () => addPeriod('blackout'));
@@ -310,7 +311,9 @@ async function fetchDataFromCloud() {
 
 function getTodayStr() {
     const tzOffset = (new Date()).getTimezoneOffset() * 60000;
-    return new Date(Date.now() - tzOffset).toISOString().split('T')[0];
+    const resetHour = (state && state.settings && state.settings.dayResetHour) ? parseInt(state.settings.dayResetHour) : 0;
+    const offsetMs = resetHour * 60 * 60 * 1000;
+    return new Date(Date.now() - offsetMs - tzOffset).toISOString().split('T')[0];
 }
 
 function updateSettings() {
@@ -318,6 +321,7 @@ function updateSettings() {
         .filter(cb => cb.checked)
         .map(cb => parseInt(cb.value));
     state.settings.availMultiplier = parseFloat(availMultiplierInput.value) || 1.0;
+    state.settings.dayResetHour = parseInt(document.getElementById('dayResetHour').value) || 0;
     saveData();
     forceRegenerateTasks();
 }
@@ -833,6 +837,10 @@ function renderAll() {
 }
 
 function renderSettings() {
+    if (state.settings.dayResetHour !== undefined) {
+        document.getElementById('dayResetHour').value = state.settings.dayResetHour;
+    }
+
     availPeriodList.innerHTML = '';
     state.settings.availPeriods.forEach((p, i) => {
         const li = document.createElement('li');
