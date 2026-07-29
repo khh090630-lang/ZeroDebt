@@ -619,7 +619,9 @@ function distributeGoalsForToday(isForce = false) {
         let uStr = goal.unitString || '단위';
         
         if (existingTask) {
+            let completedCount = existingTask.subtasks ? existingTask.subtasks.filter(Boolean).length : 0;
             if (existingTask.completed !== undefined) {
+                 completedCount = existingTask.completed;
                  existingTask.subtasks = new Array(existingTask.units).fill(existingTask.completed);
                  delete existingTask.completed;
                  delete existingTask.duration;
@@ -628,14 +630,17 @@ function distributeGoalsForToday(isForce = false) {
                  existingTask.subtasks = new Array(existingTask.units).fill(false);
             }
             
-            if (existingTask.units !== simTask.units) {
-                let newSubtasks = new Array(simTask.units).fill(false);
-                for (let i = 0; i < Math.min(existingTask.subtasks.length, simTask.units); i++) {
+            // Ensure we never shrink the task below what was already completed today
+            let finalUnits = Math.max(simTask.units, completedCount);
+            
+            if (existingTask.units !== finalUnits) {
+                let newSubtasks = new Array(finalUnits).fill(false);
+                for (let i = 0; i < Math.min(existingTask.subtasks.length, finalUnits); i++) {
                     newSubtasks[i] = existingTask.subtasks[i];
                 }
                 existingTask.subtasks = newSubtasks;
-                existingTask.units = simTask.units;
-                existingTask.name = existingTask.name.replace(/\(\d+.*\)/, `(${simTask.units}${uStr})`);
+                existingTask.units = finalUnits;
+                existingTask.name = existingTask.name.replace(/\(\d+.*\)/, `(${finalUnits}${uStr})`);
             }
             existingTask.unitString = uStr;
             existingTask.minsPerUnit = goal.minsPerUnit || (goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10);
@@ -653,6 +658,25 @@ function distributeGoalsForToday(isForce = false) {
                 expanded: false,
                 minsPerUnit: goal.minsPerUnit || (goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10)
             });
+        }
+    });
+    
+    // Recover any tasks that were removed by the new simulation but already had completed items today
+    oldTasks.forEach(oldT => {
+        let completedCount = oldT.subtasks ? oldT.subtasks.filter(Boolean).length : (oldT.completed || 0);
+        if (completedCount > 0 && !newTasks.find(t => t.goalId === oldT.goalId)) {
+            let goal = state.goals.find(g => g.id === oldT.goalId);
+            if (!goal) return;
+            let uStr = goal.unitString || '단위';
+            oldT.units = completedCount;
+            if (oldT.subtasks) {
+                oldT.subtasks = oldT.subtasks.slice(0, completedCount);
+                oldT.subtasks.fill(true); // force all kept items to be checked
+            } else {
+                oldT.subtasks = new Array(completedCount).fill(true);
+            }
+            oldT.name = oldT.name.replace(/\(\d+.*\)/, `(${completedCount}${uStr})`);
+            newTasks.push(oldT);
         }
     });
     
@@ -1239,7 +1263,45 @@ function simulateSchedule(ignoreTodayState = false) {
         simDate.setUTCDate(simDate.getUTCDate() + 1);
     }
     
-    // PRE-CALCULATE INDEPENDENT SCHEDULES (CAPACITY POOL)
+    // PRE-CALCULATE BASELINE SCHEDULES (ORIGINAL WORKLOAD)
+    const baselineSchedules = {};
+    simGoals.forEach(goal => {
+        baselineSchedules[goal.id] = {};
+        let goalType = goal.type || 'long';
+        if (goalType === 'daily') return; // Daily has fixed baseline
+
+        let goalStartDateStr = goal.startDate || getTodayStr();
+        let currentDate = new Date(goalStartDateStr);
+        let deadlineDate = new Date(goal.deadline);
+        
+        if (currentDate > deadlineDate) return;
+        
+        let totalWeightGoal = 0;
+        for (let d = new Date(currentDate); d <= deadlineDate; d.setUTCDate(d.getUTCDate() + 1)) {
+            totalWeightGoal += getWeightOfDay(d.toISOString().split('T')[0]);
+        }
+        
+        if (totalWeightGoal === 0) return;
+        
+        let accWeight = 0;
+        let prevAssigned = 0;
+        
+        for (let d = new Date(currentDate); d <= deadlineDate; d.setUTCDate(d.getUTCDate() + 1)) {
+            const dStr = d.toISOString().split('T')[0];
+            const w = getWeightOfDay(dStr);
+            if (w > 0) {
+                accWeight += w;
+                let target = Math.round(goal.totalUnits * accWeight / totalWeightGoal);
+                let assign = target - prevAssigned;
+                if (assign > 0) {
+                    baselineSchedules[goal.id][dStr] = assign;
+                }
+                prevAssigned = target;
+            }
+        }
+    });
+
+    // PRE-CALCULATE INDEPENDENT SCHEDULES (REQUIRED CAPACITY POOL)
     const independentSchedules = {}; 
     
     simGoals.forEach(goal => {
@@ -1300,12 +1362,31 @@ function simulateSchedule(ignoreTodayState = false) {
         let dailyTasks = [];
         
         if (todayWeight > 0) {
-            let total_capacity = 0;
+            let required_capacity = 0;
+            let baseline_capacity = 0;
+            
             simGoals.forEach(goal => {
+                let gType = goal.type || 'long';
+                
+                // Add required capacity
                 if (independentSchedules[goal.id] && independentSchedules[goal.id][dStr]) {
-                    total_capacity += independentSchedules[goal.id][dStr];
+                    required_capacity += independentSchedules[goal.id][dStr];
+                }
+                
+                // Add baseline capacity (Original workload memory)
+                if (gType === 'daily') {
+                    if (dStr >= (goal.startDate || getTodayStr()) && dStr <= goal.deadline) {
+                        baseline_capacity += goal.totalUnits;
+                    }
+                } else {
+                    if (baselineSchedules[goal.id] && baselineSchedules[goal.id][dStr]) {
+                        baseline_capacity += baselineSchedules[goal.id][dStr];
+                    }
                 }
             });
+            
+            // Maintain the workload high even if some goals are finished early
+            let total_capacity = Math.max(required_capacity, baseline_capacity);
             
             let activeGoals = simGoals.filter(g => {
                 let gType = g.type || 'long';
