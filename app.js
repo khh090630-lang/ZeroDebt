@@ -629,15 +629,29 @@ function distributeGoalsForToday(isForce = false) {
             if (!existingTask.subtasks) {
                  existingTask.subtasks = new Array(existingTask.units).fill(false);
             }
+            // Use the max of existing checkboxes or history log to recover lost checkboxes
+            completedCount = Math.max(completedCount, goal.completedToday || 0);
             
             // Ensure we never shrink the task below what was already completed today
             let finalUnits = Math.max(simTask.units, completedCount);
             
             if (existingTask.units !== finalUnits) {
                 let newSubtasks = new Array(finalUnits).fill(false);
+                let actualChecked = existingTask.subtasks.filter(Boolean).length;
+                
                 for (let i = 0; i < Math.min(existingTask.subtasks.length, finalUnits); i++) {
                     newSubtasks[i] = existingTask.subtasks[i];
                 }
+                
+                // If history says we did more, fill them in
+                let checksToAdd = completedCount - actualChecked;
+                for (let i = 0; i < finalUnits && checksToAdd > 0; i++) {
+                    if (!newSubtasks[i]) {
+                        newSubtasks[i] = true;
+                        checksToAdd--;
+                    }
+                }
+                
                 existingTask.subtasks = newSubtasks;
                 existingTask.units = finalUnits;
                 existingTask.name = existingTask.name.replace(/\(\d+.*\)/, `(${finalUnits}${uStr})`);
@@ -646,15 +660,19 @@ function distributeGoalsForToday(isForce = false) {
             existingTask.minsPerUnit = goal.minsPerUnit || (goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10);
             newTasks.push(existingTask);
         } else {
+            let completedToday = goal.completedToday || 0;
+            let finalUnits = Math.max(simTask.units, completedToday);
+            let subtasks = new Array(finalUnits).fill(false);
+            for(let i=0; i < completedToday; i++) subtasks[i] = true;
+            
             newTasks.push({
                 id: 'task_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
                 goalId: goal.id,
                 subject: goal.subject,
-                name: `${goal.name} (${simTask.units}${uStr})`,
-                units: simTask.units,
-                units: simTask.units,
+                name: `${goal.name} (${finalUnits}${uStr})`,
+                units: finalUnits,
                 unitString: uStr,
-                subtasks: new Array(simTask.units).fill(false),
+                subtasks: subtasks,
                 expanded: false,
                 minsPerUnit: goal.minsPerUnit || (goal.totalMins ? (goal.totalMins / goal.totalUnits) : 10)
             });
@@ -1247,7 +1265,17 @@ function simulateSchedule(ignoreTodayState = false) {
     });
     
     const schedule = {};
-    let simGoals = state.goals.map(g => ({...g, simCompleted: g.completedUnits}));
+    let simGoals = state.goals.map(g => {
+        let completedToday = 0;
+        if (state.history && state.history[todayStr] && state.history[todayStr].completed) {
+            completedToday = state.history[todayStr].completed.filter(c => c.goalId === g.id).length;
+        }
+        return {
+            ...g,
+            simCompleted: Math.max(0, g.completedUnits - completedToday),
+            completedToday: completedToday
+        };
+    });
     
     if (!ignoreTodayState) {
         schedule[todayStr] = state.tasks.map(t => ({ 
