@@ -1515,6 +1515,10 @@ function renderCalendar() {
         calendarGrid.appendChild(cell);
     }
     
+    let oldTasksForCal = (state.lastGeneratedDate === todayStr) ? (state.tasks || []) : [];
+    const { schedule } = simulateSchedule(true, oldTasksForCal);
+    fullSchedule = schedule;
+
     for (let day = 1; day <= totalDays; day++) {
         const monthStr = String(currentCalMonth + 1).padStart(2, '0');
         const dayStr = String(day).padStart(2, '0');
