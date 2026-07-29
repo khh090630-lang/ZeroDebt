@@ -200,7 +200,15 @@
                                 <input type="text" id="goalName" placeholder="예: 미적분 1 인강 수강" required>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">총 분량</label>
+                                <label for="goalType">목표 유형</label>
+                                <select id="goalType" class="form-control" onchange="onGoalTypeChange('add')" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; outline: none; margin-bottom: 10px;">
+                                    <option value="long" selected>장기 목표 (전체 분량 분배)</option>
+                                    <option value="short">단기 목표 (일회성/단기 과제)</option>
+                                    <option value="daily">매일 반복 루틴 (매일 고정 분량)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" id="addGoalTotalLabel">총 분량</label>
                                 <div style="display: flex; gap: 10px;">
                                     <input type="number" class="form-control" id="goalTotalUnits" placeholder="예: 40" required min="1" style="flex: 2;">
                                     <input type="text" class="form-control" id="goalUnitString" placeholder="예: 강, 문제, 쪽" required style="flex: 1;">
@@ -216,8 +224,9 @@
                                     <input type="date" id="goalStartDate">
                                 </div>
                                 <div style="flex: 1;">
-                                    <label for="goalDeadline">마감일</label>
-                                    <input type="date" id="goalDeadline" required>
+                                    <label for="goalDeadline">마감일 (선택)</label>
+                                    <input type="date" id="goalDeadline">
+                                    <small style="display:block; color:#64748b; font-size:0.75rem; margin-top:4px;">미입력시 오늘로 설정</small>
                                 </div>
                             </div>
 
@@ -336,19 +345,28 @@
                     <label for="editGoalName">목표명</label>
                     <input type="text" id="editGoalName" required>
                 </div>
+                <div class="form-group">
+                    <label for="editGoalType">목표 유형</label>
+                    <select id="editGoalType" class="form-control" onchange="onGoalTypeChange('edit')" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; outline: none; margin-bottom: 10px;">
+                        <option value="long">장기 목표 (전체 분량 분배)</option>
+                        <option value="short">단기 목표 (일회성/단기 과제)</option>
+                        <option value="daily">매일 반복 루틴 (매일 고정 분량)</option>
+                    </select>
+                </div>
                 <div class="form-group" style="display: flex; gap: 10px;">
                     <div style="flex: 1;">
                         <label for="editGoalStartDate">시작일 (선택)</label>
                         <input type="date" id="editGoalStartDate">
                     </div>
                     <div style="flex: 1;">
-                        <label for="editGoalDeadline">마감일</label>
-                        <input type="date" id="editGoalDeadline" required>
+                        <label for="editGoalDeadline">마감일 (선택)</label>
+                        <input type="date" id="editGoalDeadline">
+                        <small style="display:block; color:#64748b; font-size:0.75rem; margin-top:4px;">미입력시 오늘로 설정</small>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="editGoalTotalUnits">총 분량</label>
+                    <label for="editGoalTotalUnits" id="editGoalTotalLabel">총 분량</label>
                     <div style="display: flex; gap: 10px;">
                         <input type="number" id="editGoalTotalUnits" min="1" required style="flex: 2;">
                         <input type="text" id="editGoalUnitString" placeholder="단위 (강, 쪽 등)" required style="flex: 1;">
@@ -375,6 +393,19 @@
         <button class="btn btn-primary" style="font-size: 1.1rem; padding: 15px 40px; border-radius: 30px; font-weight: 700; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border: none;" onclick="document.getElementById('promotionOverlay').style.display='none'">계속하기</button>
     </div>
 
+    <script>
+        function onGoalTypeChange(mode) {
+            let type = document.getElementById(mode === 'add' ? 'goalType' : 'editGoalType').value;
+            let label = document.getElementById(mode === 'add' ? 'addGoalTotalLabel' : 'editGoalTotalLabel');
+            if (label) {
+                if (type === 'daily') {
+                    label.innerText = '하루 할당 분량';
+                } else {
+                    label.innerText = '총 분량';
+                }
+            }
+        }
+    </script>
     <script src="app.js?v=3"></script>
 </body>
 </html>
