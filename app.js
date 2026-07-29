@@ -1430,6 +1430,9 @@ function simulateSchedule(ignoreTodayState = false, oldTasks = []) {
                 for (let goal of activeGoals) {
                     if (independentSchedules[goal.id] && independentSchedules[goal.id][dStr]) {
                         let planned = independentSchedules[goal.id][dStr];
+                        if (goal.type !== 'daily') {
+                            planned = Math.min(planned, goal.totalUnits - goal.simCompleted);
+                        }
                         if (planned > remaining_capacity) planned = remaining_capacity; // Safety cap
                         if (planned > 0) {
                             assignments[goal.id] = planned;
@@ -1450,9 +1453,16 @@ function simulateSchedule(ignoreTodayState = false, oldTasks = []) {
                      });
                      
                      while (remaining_capacity > 0 && unfinishedGoals.length > 0) {
+                        let progressed = false;
                         for (let i = 0; i < unfinishedGoals.length; i++) {
                             if (remaining_capacity <= 0) break;
                             let goal = unfinishedGoals[i];
+                            if (goal.type !== 'daily' && goal.simCompleted >= goal.totalUnits) {
+                                unfinishedGoals.splice(i, 1);
+                                i--;
+                                continue;
+                            }
+                            
                             if (!assignments[goal.id]) assignments[goal.id] = 0;
                             
                             assignments[goal.id]++;
