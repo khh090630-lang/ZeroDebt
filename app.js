@@ -33,16 +33,16 @@ let state = {
 };
 
 const TIERS = [
-    { name: '아이언 (Iron)', icon: '⛓️', minExp: -Infinity, minDays: 0, color: '#475569' },
-    { name: '브론즈 (Bronze)', icon: '🥉', minExp: 0, minDays: 0, color: '#b45309' },
-    { name: '실버 (Silver)', icon: '🥈', minExp: 1200, minDays: 3, color: '#94a3b8' },
-    { name: '골드 (Gold)', icon: '🥇', minExp: 2800, minDays: 7, color: '#facc15' },
-    { name: '플래티넘 (Platinum)', icon: '💠', minExp: 6000, minDays: 15, color: '#2dd4bf' },
-    { name: '에메랄드 (Emerald)', icon: '❇️', minExp: 12000, minDays: 30, color: '#10b981' },
-    { name: '다이아몬드 (Diamond)', icon: '💎', minExp: 20000, minDays: 50, color: '#3b82f6' },
-    { name: '마스터 (Master)', icon: '🔮', minExp: 30000, minDays: 75, color: '#8b5cf6' },
-    { name: '그랜드마스터 (GM)', icon: '👑', minExp: 40000, minDays: 100, color: '#ef4444' },
-    { name: '챌린저 (Challenger)', icon: '🏆', minExp: 60000, minDays: 150, color: '#f59e0b' }
+    { name: '아이언 (Iron)', icon: '⚪', minExp: -Infinity, minDays: 0, minLevel: 1, minStreak: 0, color: '#475569' },
+    { name: '브론즈 (Bronze)', icon: '🥉', minExp: 0, minDays: 0, minLevel: 1, minStreak: 0, color: '#b45309' },
+    { name: '실버 (Silver)', icon: '🥈', minExp: 2500, minDays: 5, minLevel: 3, minStreak: 0, color: '#94a3b8' },
+    { name: '골드 (Gold)', icon: '🥇', minExp: 7500, minDays: 15, minLevel: 8, minStreak: 0, color: '#facc15' },
+    { name: '플래티넘 (Platinum)', icon: '🏅', minExp: 17500, minDays: 35, minLevel: 18, minStreak: 3, color: '#2dd4bf' },
+    { name: '에메랄드 (Emerald)', icon: '❇️', minExp: 32500, minDays: 65, minLevel: 33, minStreak: 5, color: '#10b981' },
+    { name: '다이아몬드 (Diamond)', icon: '💎', minExp: 57500, minDays: 115, minLevel: 58, minStreak: 7, color: '#3b82f6' },
+    { name: '마스터 (Master)', icon: '🔮', minExp: 92500, minDays: 185, minLevel: 93, minStreak: 10, color: '#8b5cf6' },
+    { name: '그랜드마스터 (GM)', icon: '🔥', minExp: 142500, minDays: 285, minLevel: 143, minStreak: 15, color: '#ef4444' },
+    { name: '챌린저 (Challenger)', icon: '👑', minExp: 217500, minDays: 435, minLevel: 218, minStreak: 21, color: '#f59e0b' }
 ];
 
 let advanceDaysTracker = 0;
@@ -486,15 +486,9 @@ function checkAndGenerateTasks() {
     }
 }
 
-function getCurrentTierInfo(exp, days) {
-    let current = TIERS[0];
-    if (exp >= 0) current = TIERS[1];
-    for (let i = 2; i < TIERS.length; i++) {
-        if (exp >= TIERS[i].minExp && days >= TIERS[i].minDays) {
-            current = TIERS[i];
-        }
-    }
-    return current;
+function getCurrentTierInfo() {
+    let tierName = state.tier || '브론즈 (Bronze)';
+    return TIERS.find(t => t.name === tierName) || TIERS[1];
 }
 
 function calculateTodayExp(tasksObj) {
@@ -539,9 +533,39 @@ function calculateTodayExp(tasksObj) {
 }
 
 function checkTierPromotion(showAnimation = false) {
-    let oldTierStr = state.tier;
-    let current = getCurrentTierInfo(state.exp, state.perfectDays);
-    state.tier = current.name;
+    let oldTierStr = state.tier || '브론즈 (Bronze)';
+    
+    // Find the highest tier the user qualifies for fully (including streak)
+    let qualifiedTierIndex = 0;
+    for (let i = TIERS.length - 1; i >= 0; i--) {
+        if (state.exp >= TIERS[i].minExp && 
+            state.perfectDays >= TIERS[i].minDays && 
+            state.streak >= TIERS[i].minStreak) {
+            qualifiedTierIndex = i;
+            break;
+        }
+    }
+    
+    let currentTierIndex = TIERS.findIndex(t => t.name === oldTierStr);
+    if (currentTierIndex === -1) currentTierIndex = 1;
+    
+    if (qualifiedTierIndex > currentTierIndex) {
+        // Promotion!
+        state.tier = TIERS[qualifiedTierIndex].name;
+    } else if (qualifiedTierIndex < currentTierIndex) {
+        // Demotion check: Only drop if exp or days fell below maintenance requirements for current tier
+        let newTierIndex = currentTierIndex;
+        while (newTierIndex > 1) { // 1 is Bronze
+            if (state.exp >= TIERS[newTierIndex].minExp && 
+                state.perfectDays >= TIERS[newTierIndex].minDays) {
+                break; // Met maintenance reqs
+            }
+            newTierIndex--;
+        }
+        state.tier = TIERS[newTierIndex].name;
+    }
+    
+    let current = getCurrentTierInfo();
     
     if (oldTierStr !== current.name) {
         saveData();
@@ -1001,7 +1025,14 @@ function renderGarden() {
     const pdProgressText = document.getElementById('pdProgressText');
     const tierNextReq = document.getElementById('tierNextReq');
     
-    let currentTier = getCurrentTierInfo(state.exp, state.perfectDays);
+    // Update Level
+    state.level = Math.floor(state.exp / 1000) + 1;
+    const userLevelBadge = document.getElementById('userLevelBadge');
+    if (userLevelBadge) {
+        userLevelBadge.innerText = `Lv.${state.level}`;
+    }
+
+    let currentTier = getCurrentTierInfo();
     let nextTierIndex = TIERS.findIndex(t => t.name === currentTier.name) + 1;
     let nextTier = TIERS[nextTierIndex];
     
@@ -1012,31 +1043,37 @@ function renderGarden() {
     }
     
     if (nextTier) {
-        let expReq = nextTier.minExp;
-        let daysReq = nextTier.minDays;
-        let expDiff = Math.max(0, expReq - state.exp);
-        let pdDiff = Math.max(0, daysReq - state.perfectDays);
+        let minExpPrev = currentTier.minExp === -Infinity ? 0 : currentTier.minExp;
+        let expReq = nextTier.minExp - minExpPrev;
+        let expProgValue = Math.max(0, state.exp - minExpPrev);
+        
+        let minDaysPrev = currentTier.minDays;
+        let daysReq = nextTier.minDays - minDaysPrev;
+        let pdProgValue = Math.max(0, state.perfectDays - minDaysPrev);
+        
+        let streakDiff = Math.max(0, nextTier.minStreak - state.streak);
+        let expDiff = Math.max(0, nextTier.minExp - state.exp);
+        let pdDiff = Math.max(0, nextTier.minDays - state.perfectDays);
+
         if (tierNextReq) {
-            if (expDiff === 0 && pdDiff === 0) {
-                tierNextReq.innerText = '조건을 달성했습니다! 내일 승급합니다!';
+            if (expDiff === 0 && pdDiff === 0 && streakDiff === 0) {
+                tierNextReq.innerText = '조건 달성! 곧 승급합니다!';
             } else {
-                tierNextReq.innerText = `다음 티어까지: ${expDiff > 0 ? expDiff + ' EXP ' : ''}${pdDiff > 0 ? pdDiff + ' 완수 ' : ''}필요`;
+                let reqStr = '다음 티어: ';
+                if (expDiff > 0) reqStr += `${expDiff} EXP `;
+                if (pdDiff > 0) reqStr += `${pdDiff}회 완수 `;
+                if (streakDiff > 0 && expDiff === 0 && pdDiff === 0) reqStr += `${streakDiff}일 연속달성 `;
+                tierNextReq.innerText = reqStr + '필요';
             }
         }
         
-        let minExpPrev = currentTier.minExp === -Infinity ? 0 : currentTier.minExp;
-        let totalExpRange = expReq - minExpPrev;
-        let expProg = totalExpRange > 0 ? Math.min(100, Math.max(0, ((state.exp - minExpPrev) / totalExpRange) * 100)) : 100;
-        
+        let expProg = expReq > 0 ? Math.min(100, Math.max(0, (expProgValue / expReq) * 100)) : 100;
         if (expProgressBar) expProgressBar.style.width = `${expProg}%`;
-        if (expProgressText) expProgressText.innerText = `${state.exp} / ${expReq}`;
+        if (expProgressText) expProgressText.innerText = `${expProgValue} / ${expReq}`;
         
-        let minDaysPrev = currentTier.minDays;
-        let totalDaysRange = daysReq - minDaysPrev;
-        let daysProg = totalDaysRange > 0 ? Math.min(100, Math.max(0, ((state.perfectDays - minDaysPrev) / totalDaysRange) * 100)) : 100;
-        
+        let daysProg = daysReq > 0 ? Math.min(100, Math.max(0, (pdProgValue / daysReq) * 100)) : 100;
         if (pdProgressBar) pdProgressBar.style.width = `${daysProg}%`;
-        if (pdProgressText) pdProgressText.innerText = `${state.perfectDays} / ${daysReq}`;
+        if (pdProgressText) pdProgressText.innerText = `${pdProgValue} / ${daysReq}`;
         
     } else {
         if (tierNextReq) tierNextReq.innerText = '최고 티어에 도달했습니다!';
@@ -1458,12 +1495,18 @@ window.toggleTierPopup = function(event) {
     
     if (tbody) {
         tbody.innerHTML = '';
-        TIERS.forEach(tier => {
+        TIERS.forEach((tier, index) => {
             const tr = document.createElement('tr');
+            let prevTier = index > 0 ? TIERS[index - 1] : tier;
+            let reqExp = index === 0 ? 0 : tier.minExp - prevTier.minExp;
+            let reqDays = index === 0 ? 0 : tier.minDays - prevTier.minDays;
+            
             tr.innerHTML = `
                 <td style="padding: 5px 0; font-weight: 600; color: ${tier.color};">${tier.name}</td>
-                <td>${tier.minExp === -Infinity ? 0 : tier.minExp}</td>
-                <td>${tier.minDays}</td>
+                <td>+${reqExp}</td>
+                <td>+${reqDays}</td>
+                <td>Lv.${tier.minLevel}</td>
+                <td>${tier.minStreak > 0 ? tier.minStreak + '회' : '-'}</td>
             `;
             tbody.appendChild(tr);
         });
