@@ -112,11 +112,11 @@ function init() {
         fetch(SYNC_URL + '?action=load&t=' + Date.now())
             .then(res => res.json())
             .then(data => {
-                if (data.status === 'success' && data.data) {
-                    if (state.goals && state.goals.length > 0 && (!data.data.goals || data.data.goals.length === 0)) {
+                if (data && data.settings) {
+                    if (state.goals && state.goals.length > 0 && (!data.goals || data.goals.length === 0)) {
                         console.warn("Cloud data is empty. Skipping overwrite to protect local data.");
                     } else {
-                        state = data.data;
+                        state = data;
                         saveDataLocalOnly();
                     }
                 }
