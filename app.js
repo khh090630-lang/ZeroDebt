@@ -105,9 +105,10 @@ function init() {
     
     const todayStr = getTodayStr();
     
-    // Auto-sync if we are on a new day to prevent stale penalties
-    if (state.lastGeneratedDate && state.lastGeneratedDate !== todayStr && state.goals.length > 0) {
+    // Always auto-sync on load to get the freshest data from cloud
+    if (SYNC_URL) {
         document.body.style.opacity = '0.5'; // Loading state
+        showToast('클라우드에서 최신 데이터를 불러오는 중...', 'warning');
         fetch(SYNC_URL + '?action=load')
             .then(res => res.json())
             .then(data => {
@@ -126,16 +127,10 @@ function init() {
                 checkAndGenerateTasks();
                 renderAll();
             });
-        return; // Wait for fetch to finish
+    } else {
+        checkAndGenerateTasks();
+        renderAll();
     }
-    
-    // Auto-fetch from cloud silently in background to sync multiple devices on same day
-    if (state.goals.length > 0) {
-        fetchDataFromCloud(false);
-    }
-    
-    checkAndGenerateTasks();
-    renderAll();
 }
 
 function loadData() {
