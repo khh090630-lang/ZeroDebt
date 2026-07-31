@@ -109,7 +109,7 @@ function init() {
     if (SYNC_URL) {
         document.body.style.opacity = '0.5'; // Loading state
         showToast('클라우드에서 최신 데이터를 불러오는 중...', 'warning');
-        fetch(SYNC_URL + '?action=load')
+        fetch(SYNC_URL + '?action=load&t=' + Date.now())
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success' && data.data) {
