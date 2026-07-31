@@ -614,6 +614,7 @@ function checkTierPromotion(showAnimation = false) {
 
 
 function forceRegenerateTasks() {
+    checkAndGenerateTasks();
     distributeGoalsForToday(true);
     renderAll();
 }
@@ -1207,13 +1208,13 @@ function renderGarden() {
             if (btnText) {
                 btnText.innerText = `${advanceDaysTracker > 0 ? '다'.repeat(advanceDaysTracker) : ''}내일 분량 당겨하기 (EXP ${advanceDaysTracker + 2}배 보너스!)`;
             }
-        } else {
             advanceTasksContainer.style.display = 'none';
         }
     }
 }
 
 function advanceTomorrowTasks() {
+    checkAndGenerateTasks();
     advanceDaysTracker++;
     const todayStr = getTodayStr();
     
