@@ -112,8 +112,12 @@ function init() {
             .then(res => res.json())
             .then(data => {
                 if (data.status === 'success' && data.data) {
-                    state = data.data;
-                    saveDataLocalOnly();
+                    if (state.goals && state.goals.length > 0 && (!data.data.goals || data.data.goals.length === 0)) {
+                        console.warn("Cloud data is empty. Skipping overwrite to protect local data.");
+                    } else {
+                        state = data.data;
+                        saveDataLocalOnly();
+                    }
                 }
             })
             .catch(err => console.error(err))
@@ -256,9 +260,14 @@ function setupEventListeners() {
     }
     // Sync
     syncBtn.addEventListener('click', async () => {
-        // Push local state first, then pull
-        await syncDataToCloud();
-        fetchDataFromCloud(true);
+        // Prevent pushing empty state on a new device, which would wipe the cloud data
+        if (!state.goals || state.goals.length === 0) {
+            await fetchDataFromCloud(true);
+        } else {
+            // Push local state first, then pull
+            await syncDataToCloud();
+            fetchDataFromCloud(true);
+        }
     });
 }
 
@@ -289,6 +298,10 @@ async function fetchDataFromCloud() {
         const data = await response.json();
         
         if (data && data.settings) {
+            if (state.goals && state.goals.length > 0 && (!data.goals || data.goals.length === 0)) {
+                showToast('클라우드 데이터가 비어있어 로컬 데이터를 보호합니다.', 'warning');
+                return;
+            }
             state = data;
             saveDataLocalOnly();
             
@@ -313,7 +326,13 @@ function getTodayStr() {
     const tzOffset = (new Date()).getTimezoneOffset() * 60000;
     const resetHour = (state && state.settings && state.settings.dayResetHour) ? parseInt(state.settings.dayResetHour) : 0;
     const offsetMs = resetHour * 60 * 60 * 1000;
-    return new Date(Date.now() - offsetMs - tzOffset).toISOString().split('T')[0];
+    let calculatedStr = new Date(Date.now() - offsetMs - tzOffset).toISOString().split('T')[0];
+    
+    // Prevent time from moving backwards if a new day has already been generated
+    if (state && state.lastGeneratedDate && calculatedStr < state.lastGeneratedDate) {
+        return state.lastGeneratedDate;
+    }
+    return calculatedStr;
 }
 
 function updateSettings() {
