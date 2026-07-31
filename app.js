@@ -1080,21 +1080,43 @@ function renderTasks() {
 }
 
 function renderSummary() {
-    const totalMins = state.tasks.reduce((sum, t) => sum + (t.units * (t.minsPerUnit || 10)), 0);
-    const completedMins = state.tasks.reduce((sum, t) => {
+    const baseTasks = state.tasks.filter(t => !t.advanceDays || t.advanceDays === 0);
+    const advancedTasks = state.tasks.filter(t => t.advanceDays && t.advanceDays > 0);
+    
+    const baseTotalMins = baseTasks.reduce((sum, t) => sum + (t.units * (t.minsPerUnit || 10)), 0);
+    const baseCompletedMins = baseTasks.reduce((sum, t) => {
         let done = t.subtasks ? t.subtasks.filter(Boolean).length : 0;
         return sum + (done * (t.minsPerUnit || 10));
     }, 0);
     
+    const advTotalMins = advancedTasks.reduce((sum, t) => sum + (t.units * (t.minsPerUnit || 10)), 0);
+    
     if(todayEstimatedTime) {
         todayEstimatedTime.parentElement.style.display = 'block';
-        let rTotal = Math.round(totalMins);
-        todayEstimatedTime.innerText = `${Math.floor(rTotal / 60)}시간 ${rTotal % 60}분`;
+        let rTotal = Math.round(baseTotalMins);
+        let text = `${Math.floor(rTotal / 60)}시간 ${rTotal % 60}분`;
+        if (advTotalMins > 0) {
+            let advR = Math.round(advTotalMins);
+            text += ` (+당겨온 ${Math.floor(advR / 60)}시간 ${advR % 60}분)`;
+        }
+        todayEstimatedTime.innerText = text;
     }
-    let rTotal2 = Math.round(totalMins);
-    todayTaskCount.innerText = `${Math.floor(rTotal2 / 60)}시간 ${rTotal2 % 60}분`;
     
-    let percentage = totalMins > 0 ? Math.round((completedMins / totalMins) * 100) : 0;
+    let rTotal2 = Math.round(baseTotalMins);
+    let text2 = `${Math.floor(rTotal2 / 60)}시간 ${rTotal2 % 60}분`;
+    if (advTotalMins > 0) {
+        let advR2 = Math.round(advTotalMins);
+        text2 += ` (+당겨온 ${Math.floor(advR2 / 60)}시간 ${advR2 % 60}분)`;
+    }
+    todayTaskCount.innerText = text2;
+    
+    let percentage = baseTotalMins > 0 ? Math.round((baseCompletedMins / baseTotalMins) * 100) : 0;
+    
+    // If there are no base tasks but there are advanced tasks, show 100% since base is clear
+    if (baseTotalMins === 0 && advTotalMins > 0) {
+        percentage = 100;
+    }
+    
     progressBar.style.width = `${percentage}%`;
     progressText.innerText = `${percentage}%`;
 }
