@@ -638,8 +638,8 @@ function checkTierPromotion(showAnimation = false) {
 
 
 function forceRegenerateTasks() {
-    advanceDaysTracker = 0;
     checkAndGenerateTasks();
+    advanceDaysTracker = 0;
     distributeGoalsForToday(true);
     renderAll();
 }
@@ -1238,7 +1238,11 @@ function renderGarden() {
             advanceTasksContainer.style.display = 'block';
             const btnText = document.getElementById('advanceBtnText');
             if (btnText) {
-                btnText.innerText = `${advanceDaysTracker > 0 ? '당'.repeat(advanceDaysTracker) : ''}내일 분량 당겨하기 (EXP ${advanceDaysTracker + 2}배 보너스!)`;
+                let dayStr = '내일';
+                if (advanceDaysTracker === 1) dayStr = '모레';
+                else if (advanceDaysTracker === 2) dayStr = '글피';
+                else if (advanceDaysTracker > 2) dayStr = `${advanceDaysTracker + 1}일 후`;
+                btnText.innerText = `${dayStr} 분량 당겨오기 (EXP ${advanceDaysTracker + 2}배 보너스!)`;
             }
         } else {
             advanceTasksContainer.style.display = 'none';
