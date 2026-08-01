@@ -1244,7 +1244,7 @@ function advanceTomorrowTasks() {
     d.setDate(d.getDate() + advanceDaysTracker);
     const targetStr = d.toISOString().split('T')[0];
     
-    const { schedule } = simulateSchedule(true);
+    const { schedule } = simulateSchedule(true, state.tasks);
     let advanceSimTasks = schedule[targetStr] || [];
     
     if (advanceSimTasks.length === 0) {
@@ -1334,10 +1334,10 @@ function simulateSchedule(ignoreTodayState = false, oldTasks = []) {
     const schedule = {};
     let simGoals = state.goals.map(g => {
         let completedToday = 0;
-        let oldTask = oldTasks.find(t => t.goalId === g.id);
-        if (oldTask) {
-            completedToday = oldTask.subtasks ? oldTask.subtasks.filter(Boolean).length : (oldTask.completed || 0);
-        }
+        let oldTasksForGoal = oldTasks.filter(t => t.goalId === g.id);
+        oldTasksForGoal.forEach(oldTask => {
+            completedToday += oldTask.subtasks ? oldTask.subtasks.filter(Boolean).length : (oldTask.completed || 0);
+        });
         return {
             ...g,
             simCompleted: Math.max(0, g.completedUnits - completedToday),
