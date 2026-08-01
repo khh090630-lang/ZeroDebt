@@ -97,7 +97,12 @@
             <h3 style="margin: 0; color: var(--primary-color); font-weight: 700; display: flex; justify-content: center; align-items: center; position: relative;">
                 <span id="tierName">브론즈 (Bronze)</span>
                 <i class="fa-solid fa-circle-info" style="font-size: 1rem; color: #94a3b8; cursor: pointer; margin-left: 8px;" onclick="toggleTierPopup(event)"></i>
-                
+            </h3>
+            <div id="totalExpDisplay" style="font-size: 1.1rem; font-weight: 600; color: #475569; margin-top: 8px; margin-bottom: 5px;">
+                총 0 EXP
+            </div>
+            
+            <div style="position: relative;">
                 <!-- Tier Info Popup -->
                 <div id="tierInfoPopup" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 360px; max-width: 90vw; max-height: 80vh; overflow-y: auto; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 1000; padding: 15px; border: 1px solid rgba(0,0,0,0.05); font-family: 'Inter', sans-serif;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px;">
@@ -119,7 +124,7 @@
                         </tbody>
                     </table>
                 </div>
-            </h3>
+            </div>
             <p id="tierNextReq" style="font-size: 0.9rem; color: #64748b; margin-top: 5px;">다음 티어: 300 EXP, 3일 완수 필요</p>
                             
                             <div class="progress-container" style="margin-top: 20px;">
