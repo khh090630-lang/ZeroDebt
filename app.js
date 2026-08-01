@@ -1223,7 +1223,7 @@ function renderGarden() {
     const advanceTasksContainer = document.getElementById('advanceTasksContainer');
     let hasIncomplete = state.tasks.some(t => t.subtasks && t.subtasks.includes(false));
     if (advanceTasksContainer) {
-        if (state.tasks.length > 0 && !hasIncomplete) {
+        if (state.goals && state.goals.length > 0 && !hasIncomplete) {
             advanceTasksContainer.style.display = 'block';
             const btnText = document.getElementById('advanceBtnText');
             if (btnText) {
