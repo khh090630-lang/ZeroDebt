@@ -487,6 +487,16 @@ function getWeightOfDay(dateStr) {
 
 function checkAndGenerateTasks() {
     let todayStr = getTodayStr();
+    
+    // Recover advanceDaysTracker from existing tasks on reload
+    if (state.lastGeneratedDate === todayStr && advanceDaysTracker === 0 && state.tasks) {
+        state.tasks.forEach(t => {
+            if (t.advanceDays && t.advanceDays > advanceDaysTracker) {
+                advanceDaysTracker = t.advanceDays;
+            }
+        });
+    }
+
     if (state.lastGeneratedDate !== todayStr) {
         if (state.settings && state.settings.pendingDayResetHour !== undefined) {
             state.settings.dayResetHour = state.settings.pendingDayResetHour;
@@ -628,6 +638,7 @@ function checkTierPromotion(showAnimation = false) {
 
 
 function forceRegenerateTasks() {
+    advanceDaysTracker = 0;
     checkAndGenerateTasks();
     distributeGoalsForToday(true);
     renderAll();
