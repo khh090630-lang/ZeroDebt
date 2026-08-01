@@ -661,8 +661,11 @@ function distributeGoalsForToday(isForce = false) {
         let goal = state.goals.find(g => g.id === simTask.goalId);
         if (!goal) return;
         let uStr = goal.unitString || '단위';
-        
         if (existingTask) {
+            // If an advanced task is adopted as today's regular task, remove its advance property
+            if (existingTask.advanceDays !== undefined) {
+                delete existingTask.advanceDays;
+            }
             let completedCount = existingTask.subtasks ? existingTask.subtasks.filter(Boolean).length : 0;
             if (existingTask.completed !== undefined) {
                  completedCount = existingTask.completed;
@@ -731,6 +734,10 @@ function distributeGoalsForToday(isForce = false) {
             if (!goal) return;
             let uStr = goal.unitString || '단위';
             oldT.units = completedCount;
+            // Also remove advanceDays from recovered tasks so they don't break the tracker
+            if (oldT.advanceDays !== undefined) {
+                delete oldT.advanceDays;
+            }
             if (oldT.subtasks) {
                 oldT.subtasks = oldT.subtasks.slice(0, completedCount);
                 oldT.subtasks.fill(true); // force all kept items to be checked
