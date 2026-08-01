@@ -596,7 +596,7 @@ function checkTierPromotion(showAnimation = false) {
     } else if (qualifiedTierIndex < currentTierIndex) {
         // Demotion check: Only drop if exp or days fell below maintenance requirements for current tier
         let newTierIndex = currentTierIndex;
-        while (newTierIndex > 1) { // 1 is Bronze
+        while (newTierIndex > 0) { // 0 is Iron
             if (state.exp >= TIERS[newTierIndex].minExp && 
                 state.perfectDays >= TIERS[newTierIndex].minDays) {
                 break; // Met maintenance reqs
@@ -1150,6 +1150,11 @@ function renderGarden() {
     const pdProgressBar = document.getElementById('pdProgressBar');
     const pdProgressText = document.getElementById('pdProgressText');
     const tierNextReq = document.getElementById('tierNextReq');
+    const totalExpDisplay = document.getElementById('totalExpDisplay');
+    
+    if (totalExpDisplay) {
+        totalExpDisplay.innerText = `총 ${state.exp} EXP`;
+    }
     
     // Update Level
     state.level = Math.floor(state.exp / 1000) + 1;
