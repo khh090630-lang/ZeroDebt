@@ -335,7 +335,22 @@ function updateSettings() {
         .filter(cb => cb.checked)
         .map(cb => parseInt(cb.value));
     state.settings.availMultiplier = parseFloat(availMultiplierInput.value) || 1.0;
-    state.settings.dayResetHour = parseInt(document.getElementById('dayResetHour').value) || 0;
+    
+    let oldTodayStr = getTodayStr();
+    let oldResetHour = state.settings.dayResetHour || 0;
+    
+    let newResetHour = parseInt(document.getElementById('dayResetHour').value) || 0;
+    state.settings.dayResetHour = newResetHour;
+    let newTodayStr = getTodayStr();
+    
+    if (newTodayStr > oldTodayStr) {
+        state.settings.dayResetHour = oldResetHour;
+        state.settings.pendingDayResetHour = newResetHour;
+        showToast('새로운 하루의 끝 시간은 다음 날부터 적용됩니다.', 'info');
+    } else {
+        delete state.settings.pendingDayResetHour;
+    }
+    
     saveData();
     forceRegenerateTasks();
 }
@@ -478,8 +493,14 @@ function getWeightOfDay(dateStr) {
 }
 
 function checkAndGenerateTasks() {
-    const todayStr = getTodayStr();
+    let todayStr = getTodayStr();
     if (state.lastGeneratedDate !== todayStr) {
+        if (state.settings && state.settings.pendingDayResetHour !== undefined) {
+            state.settings.dayResetHour = state.settings.pendingDayResetHour;
+            delete state.settings.pendingDayResetHour;
+            todayStr = getTodayStr();
+        }
+        
         if (state.lastGeneratedDate) {
             // Resolve yesterday's EXP and Perfect Days
             const res = calculateTodayExp(state.tasks);
@@ -852,7 +873,9 @@ function renderAll() {
 }
 
 function renderSettings() {
-    if (state.settings.dayResetHour !== undefined) {
+    if (state.settings.pendingDayResetHour !== undefined) {
+        document.getElementById('dayResetHour').value = state.settings.pendingDayResetHour;
+    } else if (state.settings.dayResetHour !== undefined) {
         document.getElementById('dayResetHour').value = state.settings.dayResetHour;
     }
 
