@@ -1227,8 +1227,9 @@ function renderGarden() {
             advanceTasksContainer.style.display = 'block';
             const btnText = document.getElementById('advanceBtnText');
             if (btnText) {
-                btnText.innerText = `${advanceDaysTracker > 0 ? '다'.repeat(advanceDaysTracker) : ''}내일 분량 당겨하기 (EXP ${advanceDaysTracker + 2}배 보너스!)`;
+                btnText.innerText = `${advanceDaysTracker > 0 ? '당'.repeat(advanceDaysTracker) : ''}내일 분량 당겨하기 (EXP ${advanceDaysTracker + 2}배 보너스!)`;
             }
+        } else {
             advanceTasksContainer.style.display = 'none';
         }
     }
