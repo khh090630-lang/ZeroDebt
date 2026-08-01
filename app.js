@@ -81,7 +81,8 @@ const gardenText = document.getElementById('gardenText');
 const toastContainer = document.getElementById('toastContainer');
 const confettiContainer = document.getElementById('confetti');
 
-const syncBtn = document.getElementById('syncBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const uploadBtn = document.getElementById('uploadBtn');
 
 const editGoalModal = document.getElementById('editGoalModal');
 const editGoalForm = document.getElementById('editGoalForm');
@@ -107,26 +108,10 @@ function init() {
     
     // Always auto-sync on load to get the freshest data from cloud
     if (SYNC_URL) {
-        document.body.style.opacity = '0.5'; // Loading state
-        showToast('클라우드에서 최신 데이터를 불러오는 중...', 'warning');
-        fetch(SYNC_URL + '?action=load&t=' + Date.now())
-            .then(res => res.json())
-            .then(data => {
-                if (data && data.settings) {
-                    if (state.goals && state.goals.length > 0 && (!data.goals || data.goals.length === 0)) {
-                        console.warn("Cloud data is empty. Skipping overwrite to protect local data.");
-                    } else {
-                        state = data;
-                        saveDataLocalOnly();
-                    }
-                }
-            })
-            .catch(err => console.error(err))
-            .finally(() => {
-                document.body.style.opacity = '1';
-                checkAndGenerateTasks();
-                renderAll();
-            });
+        document.body.style.opacity = '0.5';
+        fetchDataFromCloud(false).finally(() => {
+            document.body.style.opacity = '1';
+        });
     } else {
         checkAndGenerateTasks();
         renderAll();
@@ -254,16 +239,18 @@ function setupEventListeners() {
         });
     }
     // Sync
-    syncBtn.addEventListener('click', async () => {
-        // Prevent pushing empty state on a new device, which would wipe the cloud data
-        if (!state.goals || state.goals.length === 0) {
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', async () => {
             await fetchDataFromCloud(true);
-        } else {
-            // Push local state first, then pull
+        });
+    }
+    
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', async () => {
             await syncDataToCloud();
-            fetchDataFromCloud(true);
-        }
-    });
+            showToast('수동 업로드 완료!', 'success');
+        });
+    }
 }
 
 // Sync Functions
@@ -283,13 +270,15 @@ async function syncDataToCloud() {
     }
 }
 
-async function fetchDataFromCloud() {
+async function fetchDataFromCloud(showUserToast = true) {
     if (!SYNC_URL) return;
     
-    showToast('클라우드에서 데이터를 불러오는 중...', 'warning');
+    if (showUserToast) {
+        showToast('클라우드에서 데이터를 불러오는 중...', 'warning');
+    }
     
     try {
-        const response = await fetch(SYNC_URL);
+        const response = await fetch(SYNC_URL + '?action=load&t=' + Date.now());
         const data = await response.json();
         
         if (data && data.settings) {
@@ -307,9 +296,13 @@ async function fetchDataFromCloud() {
             
             checkAndGenerateTasks();
             renderAll();
-            showToast('데이터를 성공적으로 불러왔습니다!', 'success');
+            if (showUserToast) {
+                showToast('데이터를 성공적으로 불러왔습니다!', 'success');
+            }
         } else {
-            showToast('클라우드에 저장된 올바른 데이터가 없습니다.', 'danger');
+            if (showUserToast) {
+                showToast('클라우드에 저장된 올바른 데이터가 없습니다.', 'danger');
+            }
         }
     } catch (e) {
         console.error('Fetch failed:', e);
