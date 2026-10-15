@@ -1,3 +1,4 @@
+```javascript
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwTQrXCfpyb-LmO5f5mpn8Nwoq0HINKxg-B23eILdwyqHf_ACLtJWucTFm-El4eOdptCQ/exec';
 
 const SUBJECT_COLORS = { '수학': '#3498DB', '과학': '#2ECC71', '영어': '#F39C12', '국어': '#9B59B6' };
@@ -46,6 +47,7 @@ const TIERS = [
 ];
 
 let advanceDaysTracker = 0;
+let lastPrePostponeState = null;
 
 let fullSchedule = {};
 let currentCalYear = new Date().getFullYear();
@@ -93,6 +95,7 @@ const editGoalStartDate = document.getElementById('editGoalStartDate');
 const editGoalDeadline = document.getElementById('editGoalDeadline');
 
 const editGoalTotalUnits = document.getElementById('editGoalTotalUnits');
+
 // Initialization
 function init() {
     loadData();
@@ -105,6 +108,14 @@ function init() {
     }
     
     const todayStr = getTodayStr();
+    
+    // 방금 전체 초기화를 수행한 경우 클라우드 덮어쓰기를 건너뛰고 초기 상태 유지
+    if (sessionStorage.getItem('zeroDebtJustReset') === 'true') {
+        sessionStorage.removeItem('zeroDebtJustReset');
+        checkAndGenerateTasks();
+        renderAll();
+        return;
+    }
     
     // Always auto-sync on load to get the freshest data from cloud
     if (SYNC_URL) {
@@ -282,7 +293,7 @@ async function fetchDataFromCloud(showUserToast = true) {
         const data = await response.json();
         
         if (data && data.settings) {
-            if (state.goals && state.goals.length > 0 && (!data.goals || data.goals.length === 0)) {
+            if (!data.isReset && state.goals && state.goals.length > 0 && (!data.goals || data.goals.length === 0)) {
                 showToast('클라우드 데이터가 비어있어 로컬 데이터를 보호합니다.', 'warning');
                 return;
             }
@@ -455,6 +466,7 @@ function addGoal() {
         completedUnits: 0
     };
 
+    delete state.isReset;
     state.goals.push(newGoal);
     saveData();
     
@@ -1290,7 +1302,6 @@ function advanceTomorrowTasks() {
                 subject: goal.subject,
                 name: `${goal.name} (당겨하기: ${simTask.units}${uStr})`,
                 units: simTask.units,
-                units: simTask.units,
                 unitString: uStr,
                 subtasks: new Array(simTask.units).fill(false),
                 expanded: false,
@@ -1781,17 +1792,59 @@ function switchTab(tabId) {
     document.querySelector(`.nav-btn[onclick="switchTab('${tabId}')"]`).classList.add('active');
 }
 window.switchTab = switchTab;
-window.resetAppData = function() {
+
+window.resetAppData = async function() {
     if (confirm("정말로 모든 앱 데이터(목표, 경험치, 기록 등)를 0으로 초기화하시겠습니까?\n이 작업은 되돌릴 수 없습니다.")) {
-        localStorage.removeItem('zeroDebtData_v2');
+        const resetBtn = document.getElementById('resetAppBtn');
+        if (resetBtn) {
+            resetBtn.disabled = true;
+            resetBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 초기화 중...';
+        }
+
+        fullSchedule = {};
+        advanceDaysTracker = 0;
+        lastPrePostponeState = null;
+
+        state = {
+            settings: {
+                availDays: [],
+                availMultiplier: 2.0,
+                availPeriods: [],
+                blackoutPeriods: [],
+                notificationTimes: [],
+                dayResetHour: 0
+            },
+            goals: [],
+            tasks: [],
+            history: {},
+            fullSchedule: {},
+            lastGeneratedDate: null,
+            streak: 0,
+            lastCompletedDate: null,
+            exp: 0,
+            level: 1,
+            perfectDays: 0,
+            tier: '브론즈 (Bronze)',
+            isReset: true
+        };
+
+        saveDataLocalOnly();
+        sessionStorage.setItem('zeroDebtJustReset', 'true');
+
+        if (SYNC_URL) {
+            try {
+                await syncDataToCloud();
+            } catch (e) {
+                console.error('Cloud reset failed:', e);
+            }
+        }
+
         alert("모든 데이터가 초기화되었습니다. 페이지를 새로고침합니다.");
         location.reload();
     }
-}
+};
 
 init();
-
-
 
 // Tier Info Modal Logic
 const tierInfoModal = document.getElementById('tierInfoModal');
@@ -1823,3 +1876,4 @@ window.onclick = function(event) {
         closeTierInfoModal();
     }
 };
+```
