@@ -1,4 +1,3 @@
-```javascript
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycbwTQrXCfpyb-LmO5f5mpn8Nwoq0HINKxg-B23eILdwyqHf_ACLtJWucTFm-El4eOdptCQ/exec';
 
 const SUBJECT_COLORS = { '수학': '#3498DB', '과학': '#2ECC71', '영어': '#F39C12', '국어': '#9B59B6' };
