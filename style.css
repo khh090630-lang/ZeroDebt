@@ -766,3 +766,53 @@ header {
     transform: rotate(-180deg);
 }
 
+/* Touch & Button Enhancements */
+button, input, select, label {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-btn i, .nav-btn span, .btn i {
+    pointer-events: none;
+}
+
+.btn-secondary {
+    background: #64748b;
+    color: white;
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.25);
+}
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(100, 116, 139, 0.35);
+}
+
+.btn-outline-primary {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--accent-color);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.btn-outline-primary:hover {
+    background: var(--accent-color);
+    color: white;
+}
+
+.btn-outline-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--warning-color);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.btn-outline-danger:hover {
+    background: var(--warning-color);
+    color: white;
+}
+
+.toast.toast-info {
+    border-left-color: var(--accent-color);
+    color: var(--primary-color);
+}
+.toast.toast-error {
+    border-left-color: var(--warning-color);
+    color: var(--warning-color);
+    font-weight: bold;
+
+}
